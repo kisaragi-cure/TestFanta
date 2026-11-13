@@ -1,0 +1,5268 @@
+<!doctype html><!--2026/03/02  新CSV対応版：駅番号列追加 + 備考2行目 + 13行目(始発駅到着)で発車前表示 -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>架空鉄道　列車走行位置</title>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PEPMXC34MD"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-PEPMXC34MD');
+  </script>
+
+  <style>
+    :root{
+      --line:#399E92;
+      --header:#144479;
+      --header2:#399E92;
+      --bg:#F3F5F8;
+      --panel:#FFFFFF;
+      --text:#17212b;
+      --muted:#6b7b8a;
+      --divider:rgba(0,0,0,.08);
+      --shadow: 0 10px 24px rgba(0,0,0,.10);
+
+      --rowH: 78px;
+      --trackW: 10px;
+      --node: 18px;
+      --sidePad: 14px;
+      --centerX: 50%;
+
+      --footerH: 64px;
+
+      /* ★絞り込み時の薄グレー */
+      --dimText: #9aa3ad;
+      --dimBorder: rgba(0,0,0,.10);
+      --dimBg: rgba(243,245,248,.75);
+      --lastTrainText: #9a2f2f;
+    }
+
+    *{ box-sizing:border-box; }
+    [hidden]{ display:none !important; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color:var(--text);
+    }
+    @media (max-width: 640px){
+      #btnEnterFullscreen,
+      #btnExitFullscreen{
+        display:none !important;
+      }
+      html, body{
+        overscroll-behavior-y: none;
+      }
+      body{
+        overscroll-behavior: none;
+      }
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:30;
+      box-shadow: 0 2px 10px rgba(0,0,0,.10);
+    }
+
+    /* ===== Top bar ===== */
+    .topbar{
+      background: var(--header);
+      color:#fff;
+      height:48px;
+      display:flex;
+      align-items:center;
+      padding: 0 var(--sidePad);
+      gap: 10px;
+    }
+    .topbar .leftgrp,
+    .topbar .rightgrp{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+    .topbar .title{
+      font-weight:900;
+      letter-spacing:.02em;
+      font-size: 16px;
+      flex:1 1 auto;
+      text-align:center;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    .iconbtn{
+      width:34px;height:34px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.15);
+      color:#fff;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      flex: 0 0 auto;
+      font-weight:900;
+      font-size: 20px;
+      line-height: 1;
+    }
+    .iconbtn:active{ transform: translateY(1px); }
+    .iconbtn.fs-icon{
+      position: relative;
+      overflow: hidden;
+      font-size: 0;
+    }
+    .iconbtn.fs-icon .win{
+      position: relative;
+      display:block;
+      width: 16px;
+      height: 12px;
+      border: 2px solid currentColor;
+      border-radius: 2px;
+    }
+    .iconbtn.fs-icon .win::before{
+      content:"";
+      position:absolute;
+      left:-2px;
+      right:-2px;
+      top:-2px;
+      height: 3px;
+      background: currentColor;
+      border-radius: 2px 2px 0 0;
+    }
+    .iconbtn.fs-icon.exit .win::after{
+      content:"";
+      position:absolute;
+      inset: 2px;
+      border: 2px solid currentColor;
+      border-radius: 1px;
+      opacity:.7;
+    }
+
+    /* ヘッダー：更新 + 現在時刻は1行固定 */
+    .subbar{
+      background: var(--header2);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 8px var(--sidePad);
+      font-size: 12px;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+      position: relative;
+    }
+    .subbar .left{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+      white-space:nowrap;
+      flex: 0 0 auto;
+      min-width: 0;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 70vw;
+    }
+    .subbar button,
+    .subbar a{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color:#fff;
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-weight:800;
+      font-size: 11px;
+      line-height: 1.1;
+      cursor:pointer;
+      flex: 0 0 auto;
+      text-decoration:none;
+    }
+    .subbar button:active{ transform: translateY(1px); }
+
+    /* iボタンで開閉する情報パネル */
+    .info-panel{
+      background:#fff;
+      border-bottom: 1px solid var(--divider);
+      padding: 8px var(--sidePad);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .info-row{
+      padding: 2px 0;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    #dataStatus{
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      line-height: 1.45;
+    }
+    #runtimeHint{
+      padding-left: 1em;
+    }
+
+    main{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 10px 10px calc(24px + var(--footerH));
+    }
+
+    .board{
+      background: var(--panel);
+      border: 1px solid var(--divider);
+      border-radius: 14px;
+      overflow:hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .board-body{
+      position:relative;
+      height: calc(100svh - var(--headerH, 190px) - var(--footerH) + 70px);
+      min-height: 560px;
+      overflow:auto;
+      background: #fff;
+    }
+
+    .line-wrap{
+      position:relative;
+      min-width: 0;
+    }
+
+    .track-layer{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index: 1;
+    }
+    .track{
+      position:absolute;
+      left: var(--centerX);
+      transform: translateX(-50%);
+      top: calc(var(--rowH) / 2);
+      bottom: calc(var(--rowH) / 2);
+      width: var(--trackW);
+      background: var(--line);
+      border-radius: 999px;
+      box-shadow: 0 0 0 6px rgba(57,158,146,.12);
+    }
+
+    .stations{
+      position:relative;
+      display:block;
+      z-index: 0;
+    }
+    .station-row{
+      position:relative;
+      height: var(--rowH);
+      display:flex;
+      align-items:center;
+      padding: 0 var(--sidePad);
+      border-bottom: 1px solid rgba(0,0,0,.04);
+    }
+    .station-row:nth-child(odd){ background: #F8FAFC; }
+
+    .st-left{
+      width: calc(50% - 26px);
+      padding-right: 10px;
+      min-width:0;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .st-main{
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .depbtn{
+      appearance:none;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(20,68,121,.16);
+      background: #eef2f7;
+      color: #144479;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      flex: 0 0 auto;
+      padding:0;
+    }
+    .depbtn:active{ transform: translateY(1px); }
+    .depbtn .screen{
+      width: 13px;
+      height: 9px;
+      border: 2px solid currentColor;
+      border-radius: 1px;
+      position: relative;
+      display:block;
+    }
+    .depbtn .screen::before{
+      content:"";
+      position:absolute;
+      left: 1px;
+      right: 1px;
+      top: 1px;
+      height: 1px;
+      background: currentColor;
+      opacity: .6;
+    }
+    .depbtn .screen::after{
+      content:"";
+      position:absolute;
+      left: 50%;
+      bottom: -4px;
+      width: 6px;
+      height: 1px;
+      background: currentColor;
+      transform: translateX(-50%);
+    }
+    .st-code{
+      font-weight:900;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing:.02em;
+      white-space:nowrap;
+    }
+
+    /* ===== 駅名：タップできるようボタン化 ===== */
+    .st-namebtn{
+      appearance:none;
+      border:0;
+      background:transparent;
+      padding:0;
+      margin:0;
+      text-align:left;
+      font-weight:900;
+      font-size: 16px;
+      line-height:1.15;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      word-break: keep-all;
+      cursor:pointer;
+      color: var(--text);
+      width: 100%;
+    }
+    .st-namebtn:hover{ text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+    .st-namebtn:focus-visible{
+      outline: 3px solid rgba(57,158,146,.45);
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+
+    .st-sub{
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    .st-right{
+      width: calc(50% - 26px);
+      padding-left: 10px;
+      display:flex;
+      justify-content:flex-end;
+      align-items:center;
+      gap:10px;
+      color: var(--muted);
+      font-size: 12px;
+      min-width:0;
+    }
+
+    .node{
+      position:absolute;
+      left: var(--centerX);
+      transform: translate(-50%, -50%);
+      width: var(--node);
+      height: var(--node);
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid var(--line);
+      box-shadow: 0 6px 16px rgba(0,0,0,.10);
+      pointer-events:none;
+      z-index: 2;
+    }
+
+    .trains-layer{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index: 3;
+    }
+    .branch-layer{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index: 0;
+    }
+    .branch-ui-layer{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index: 2;
+    }
+    .branch-seg{
+      position:absolute;
+      height: 8px;
+      border-radius: 999px;
+      transform-origin: 0 50%;
+      box-shadow: 0 0 0 4px rgba(205,181,94,.14);
+    }
+    .branch-node{
+      position:absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background:#fff;
+      border: 4px solid #CDB55E;
+      box-shadow: 0 6px 16px rgba(0,0,0,.10);
+      transform: translate(-50%, -50%);
+    }
+    .branch-station-ui{
+      position:absolute;
+      right: var(--sidePad);
+      transform: translateY(-50%);
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      min-width: 0;
+      pointer-events:none;
+    }
+    .branch-station-ui .txt{
+      text-align:right;
+      min-width: 0;
+      max-width: 150px;
+      line-height: 1.15;
+      color: var(--text);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .branch-station-ui .code{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+    .branch-station-ui .name{
+      display:block;
+      font-size: 16px;
+      color: var(--text);
+      font-weight: 900;
+    }
+    .branch-station-ui .st-namebtn,
+    .branch-station-ui .branch-depbtn{
+      pointer-events: auto;
+    }
+    .branch-depbtn{
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .train.branch{
+      margin-left: 0 !important;
+    }
+
+    .train{
+      position:absolute;
+      left: var(--centerX);
+      transform: translate(-50%, -50%);
+      pointer-events:auto;
+      cursor:pointer;
+      user-select:none;
+      touch-action: manipulation;
+    }
+
+    .pentagon{
+      width: 20px;
+      height: 20px;
+      background: var(--line);
+      clip-path: polygon(50% 0%, 100% 35%, 82% 100%, 18% 100%, 0% 35%);
+      border: 2px solid rgba(255,255,255,.85);
+      box-shadow: 0 10px 18px rgba(0,0,0,.14);
+      transform-origin: 50% 50%;
+      flex: 0 0 auto;
+      cursor:pointer;
+    }
+
+    .train .pentagon{
+      position:absolute;
+      left:0;
+      top:50%;
+      transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+      z-index: 2;
+    }
+
+    .train .stopped-tag{
+      position:absolute;
+      left:0;
+      top: calc(50% - 22px);
+      transform: translate(-50%, -100%);
+      z-index: 3;
+    }
+
+    .train .train-label{
+      position:absolute;
+      top:50%;
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+
+    .train.left  .train-label{ right: 16px; }
+    .train.right .train-label{ left:  16px; }
+
+    .train-label{
+      background:#fff;
+      border:1px solid rgba(0,0,0,.10);
+      border-radius: 12px;
+      padding: 4px 6px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.10);
+      min-width: 80px;
+      max-width: min(130px, 40vw);
+      cursor:pointer;
+      text-align: center;
+    }
+    .train-label.hidden{ display:none; }
+
+    .train-label .no{
+      display:block;
+      font-variant-numeric: tabular-nums;
+      color: rgba(0,0,0,.82);
+      font-size: 11px;
+    }
+
+    .train-label .type{
+      display:inline-flex;
+      margin-top: 4px;
+      justify-content:center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 10px;
+      white-space:nowrap;
+      max-width: 160px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    .train-label .sub{
+      display:block;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .train-label .meta{
+      display:block;
+      margin-top: 3px;
+      font-size: 9px;
+      font-weight: 900;
+      color: var(--lastTrainText);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .modal-last-train{
+      color: var(--lastTrainText);
+      font-weight: 900;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+    .modal-subline{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 640px){
+      #trainModalCard .modal-title .sub{
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        max-width: calc(100vw - 110px);
+        line-height: 1.35;
+      }
+      #trainModalCard .modal-subline{
+        display: flex;
+        align-items: flex-start;
+        gap: 2px 8px;
+      }
+      #trainModalCard .modal-last-train{
+        margin-left: 0;
+      }
+    }
+
+    .stopped-tag{
+      background: rgba(0,0,0,.72);
+      color:#fff;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight:900;
+      white-space:nowrap;
+      pointer-events:none;
+    }
+
+    /* ===== フッター ===== */
+    footer{
+      position: fixed;
+      left:0; right:0; bottom:0;
+      z-index: 40;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(0,0,0,.10);
+      height: var(--footerH);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 -8px 24px rgba(0,0,0,.10);
+    }
+    .footer-inner{
+      width: min(980px, 100%);
+      padding: 8px 10px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+      white-space: nowrap;
+    }
+
+    .footer-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex: 0 0 auto;
+      white-space:nowrap;
+    }
+    .timebox{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width: 160px;
+      flex: 0 0 auto;
+    }
+    .timebox.is-hidden{
+      display:none;
+    }
+    .timebox .label{
+      font-size: 10px;
+      color: var(--muted);
+      font-weight:800;
+      line-height:1.1;
+    }
+    .timebox .value{
+      font-size: 12px;
+      font-weight:900;
+      font-variant-numeric: tabular-nums;
+      line-height:1.1;
+    }
+
+    .footer-bottom{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .time-controls{
+      display:flex;
+      gap:4px;
+      flex-wrap: nowrap;
+      justify-content:flex-end;
+      align-items:center;
+      overflow:hidden;
+    }
+
+    .tbtn{
+      appearance:none;
+      border:1px solid rgba(0,0,0,.12);
+      background: #f1f3f6;
+      color: rgba(0,0,0,.82);
+      border-radius: 10px;
+      padding: 7px 8px;
+      font-weight:900;
+      cursor:pointer;
+      font-size: 11px;
+      line-height:1;
+      flex: 0 0 auto;
+    }
+    .tbtn.primary{
+      background: rgba(57,158,146,.16);
+      border-color: rgba(57,158,146,.35);
+    }
+    .tbtn:active{ transform: translateY(1px); }
+
+    @media (min-width: 521px){
+      :root{ --footerH: 64px; }
+      .footer-inner{ flex-direction: row; }
+      .footer-bottom{ justify-content:flex-end; }
+      .time-controls{ flex-wrap: nowrap; }
+    }
+
+    @media (max-width: 520px){
+      :root{ --footerH: 132px; }
+
+      .subbar{
+        gap: 6px;
+        padding: 7px 10px;
+      }
+      .subbar .left{
+        gap: 5px;
+      }
+      .pill{
+        gap: 4px;
+        padding: 5px 7px;
+        font-size: 10px;
+        max-width: 48vw;
+      }
+
+      .footer-inner{
+        flex-direction: column;
+        align-items: stretch;
+        justify-content:flex-start;
+        gap: 8px;
+      }
+      .footer-top{
+        width: 100%;
+        min-width: 0;
+        gap: 8px;
+        align-items: center;
+        flex-direction: row;
+        justify-content: space-between;
+      }
+      .footer-bottom{
+        width: 100%;
+        justify-content:flex-start;
+        gap: 0;
+      }
+      .timebox{
+        min-width: 0;
+        flex: 0 1 auto;
+      }
+      .timebox .label{
+        font-size: 10px;
+      }
+      .timebox .value{
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #btnNow{
+        flex: 0 0 auto;
+        width: 136px;
+        margin-left: auto;
+        padding: 9px 8px;
+        font-size: 10px;
+      }
+      .time-controls{
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        gap: 2px;
+        overflow: hidden;
+      }
+      .tbtn{
+        width: 100%;
+        min-width: 0;
+        padding: 8px 0;
+        font-size: 10px;
+        line-height: 1;
+        border-radius: 9px;
+        text-align: center;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 390px){
+      :root{ --footerH: 126px; }
+
+      .subbar{
+        gap: 4px;
+        padding: 6px 8px;
+      }
+      .pill{
+        padding: 4px 6px;
+        font-size: 9px;
+        max-width: 42vw;
+      }
+
+      .footer-inner{
+        padding: 6px 8px;
+        gap: 6px;
+      }
+      .footer-top{
+        gap: 6px;
+      }
+      .timebox .label{
+        font-size: 9px;
+      }
+      .timebox .value{
+        font-size: 9px;
+      }
+      #btnNow{
+        width: 112px;
+        padding: 8px 6px;
+        font-size: 9px;
+      }
+      .time-controls{
+        gap: 1px;
+      }
+      .tbtn{
+        padding: 7px 0;
+        font-size: 9px;
+      }
+    }
+
+    /* ===== モーダル共通 ===== */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.45);
+      display:none;
+      z-index:80;
+    }
+    .modal{
+      position:fixed;
+      inset:0;
+      display:none;
+      z-index:90;
+      align-items:center;
+      justify-content:center;
+      padding: 16px;
+    }
+    .modal.show{ display:flex; }
+    .modal-backdrop.show{ display:block; }
+
+    .modal-card{
+      width: min(820px, 100%);
+      max-height: min(82svh, 860px);
+      overflow:auto;
+      border-radius: 14px;
+      background:#fff;
+      border: 1px solid rgba(0,0,0,.12);
+      box-shadow: 0 24px 70px rgba(0,0,0,.30);
+    }
+    @media (min-width: 641px){
+      .modal-card{
+        scrollbar-width: thin;
+        scrollbar-color: rgba(20,68,121,.22) transparent;
+      }
+      .modal-card::-webkit-scrollbar{
+        width: 8px;
+      }
+      .modal-card::-webkit-scrollbar-track{
+        background: transparent;
+      }
+      .modal-card::-webkit-scrollbar-thumb{
+        background: rgba(20,68,121,.18);
+        border-radius: 999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+      .modal-card::-webkit-scrollbar-thumb:hover{
+        background: rgba(20,68,121,.28);
+        background-clip: padding-box;
+      }
+    }
+    @media (max-width: 640px){
+      .modal-card{
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .modal-card::-webkit-scrollbar{
+        display: none;
+      }
+    }
+    .modal-head{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#fff;
+      border-bottom: 1px solid var(--divider);
+      padding: 10px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modal-nav{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .modal-back{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      background: #f1f3f6;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight:900;
+      font-size: 20px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor:pointer;
+      flex: 0 0 auto;
+    }
+    .modal-back[hidden]{ display:none; }
+    .modal-title .main{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      font-weight:900;
+      font-size: 14px;
+    }
+    #trainModalCard .modal-title .type{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 2px 18px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    #depBoardTitle .main{
+      font-size: 18px;
+    }
+    .modal-title .sub{
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 62vw;
+    }
+    .modal-close{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      background: #f1f3f6;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight:900;
+      font-size: 22px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor:pointer;
+    }
+    .modal-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:0 0 auto;
+    }
+    .modal-print{
+      appearance:none;
+      border: 1px solid rgba(20,68,121,.18);
+      background: rgba(20,68,121,.08);
+      color: var(--header);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight:900;
+      font-size: 13px;
+      line-height: 1;
+      cursor:pointer;
+    }
+
+    table{ width:100%; border-collapse:collapse; }
+    th, td{
+      text-align:left;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th{
+      position:sticky;
+      top: 52px;
+      background:#fff;
+      z-index:1;
+      font-weight:900;
+      color: rgba(0,0,0,.74);
+      white-space: nowrap;
+    }
+    td{ font-variant-numeric: tabular-nums; }
+
+    .passnote{
+      color:#6b7b8a;
+      font-weight:900;
+      font-size: 11px;
+      line-height: 1.1;
+      display:inline-block;
+      margin-top: 2px;
+    }
+
+    /* =========================================================
+       列車時刻表モーダル：右端に「走行レール」と「現在位置」を表示
+    ========================================================= */
+    .train-tt-wrap{
+      position: relative;
+      padding-right: 0;
+    }
+    .train-tt-wrap td{
+      font-weight: 900;
+    }
+    .train-tt-rail{
+      position:absolute;
+      top: 64px;
+      bottom: 14px;
+      left: 0;
+      width: 8px;
+      border-radius: 999px;
+      background: var(--line);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+      transform: translateX(-50%);
+      pointer-events:none;
+      opacity: .2;
+    }
+    .train-tt-rail::after{
+      content:"";
+      position:absolute;
+      inset: 0;
+      border-radius: 999px;
+      box-shadow: 0 0 0 6px var(--line);
+      opacity:.10;
+    }
+
+    .train-tt-dot{
+      position:absolute;
+      left: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background:#fff;
+      border: 4px solid rgba(57,158,146,.55);
+      box-shadow: 0 8px 16px rgba(0,0,0,.12);
+      transform: translate(-50%, -50%);
+      pointer-events:none;
+      opacity: 0;
+      transition: opacity .12s ease;
+    }
+    .train-tt-dot.show{ opacity: 1; }
+
+    .train-tt-icon{
+      position:absolute;
+      left: 0;
+      width: 22px;
+      height: 22px;
+      clip-path: polygon(50% 0%, 100% 35%, 82% 100%, 18% 100%, 0% 35%);
+      background: var(--c, var(--line));
+      border: 2px solid rgba(255,255,255,.9);
+      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+      transform: translate(-50%, -50%) rotate(180deg);
+      pointer-events:none;
+      opacity: 0;
+      transition: opacity .12s ease;
+    }
+    .train-tt-icon.show{ opacity: 1; }
+    .tt-poscol{
+      width: 42px;
+      min-width: 42px;
+      padding: 10px 0;
+      text-align: center;
+    }
+
+    .stcell{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      min-width:0;
+    }
+    .stcell .code{
+      font-weight:900;
+      font-size: 11px;
+      color: var(--muted);
+      line-height:1.05;
+      white-space:nowrap;
+    }
+    .stcell .name{
+      font-weight:900;
+      font-size: 14px;
+      line-height:1.15;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 52vw;
+    }
+    .stcell .namebtn{
+      appearance:none;
+      border:0;
+      background:transparent;
+      padding:0;
+      margin:0;
+      font: inherit;
+      color: inherit;
+      text-align:left;
+      cursor:pointer;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 52vw;
+    }
+    .stcell .namebtn:hover{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+    .stcell .namebtn:focus-visible{
+      outline: 3px solid rgba(57,158,146,.35);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    /* ===== 設定モーダル ===== */
+    .settings-body{ padding: 12px; }
+    .set-section{
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 12px;
+      padding: 12px;
+      background:#fff;
+      margin-bottom: 10px;
+    }
+    .set-section .h{
+      font-weight: 900;
+      margin: 0 0 10px;
+      line-height: 1.2;
+    }
+    .radio-row{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .radio-row label{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,.10);
+      background:#f7f8fb;
+      cursor:pointer;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.35;
+      width: 100%;
+      min-width: 0;
+    }
+    .radio-row label input[type="radio"]{
+      margin: 2px 0 0;
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+    @media (min-width: 640px){
+      .radio-row{ grid-template-columns: 1fr 1fr; }
+    }
+    .inline-select{
+      margin-top: 8px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:#6b7b8a;
+      font-size:12px;
+      font-weight:700;
+      line-height:1.35;
+      flex-wrap: wrap;
+    }
+    .inline-select select{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      background:#f7f8fb;
+      border-radius: 10px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .link-grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    @media (min-width: 640px){
+      .link-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 900px){
+      .link-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .linkbtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,.12);
+      background:#f1f3f6;
+      color: rgba(0,0,0,.84);
+      font-weight:900;
+      text-decoration:none;
+      cursor:pointer;
+      width: 100%;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* =========================================================
+       駅時刻表モーダル
+    ========================================================= */
+    .tt-tabs{
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--divider);
+      display:flex;
+      gap:8px;
+      background:#fff;
+      position: sticky;
+      top: 52px;
+      z-index: 1;
+    }
+    .tt-tab{
+      flex:1 1 0;
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 10px;
+      font-weight: 900;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    .tt-tab[aria-selected="true"]{
+      border-color: rgba(57,158,146,.35);
+      box-shadow: 0 0 0 3px rgba(57,158,146,.18);
+    }
+    .tt-tab .badge{
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .tt-body{ padding: 10px 12px 12px; }
+
+    .tt-table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      border:1px solid rgba(0,0,0,.10);
+      border-radius: 14px;
+      overflow:hidden;
+      background:#fff;
+    }
+    /* ★駅時刻表だけ sticky th を無効化 */
+    .tt-table th{
+      position: static !important;
+      top: auto !important;
+      left: auto !important;
+      z-index: auto !important;
+      background: #fff;
+    }
+    .tt-table thead th{
+      border-bottom: 1px solid rgba(0,0,0,.08);
+      padding: 10px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align:left;
+      white-space: nowrap;
+    }
+    .tt-table th.hour{
+      width: 64px;
+      text-align:center;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text);
+      border-right: 1px solid rgba(0,0,0,.08);
+      background: rgba(243,245,248,.55);
+      white-space: nowrap;
+    }
+    .tt-table td{
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      vertical-align: top;
+    }
+    .tt-table tr:last-child th,
+    .tt-table tr:last-child td{ border-bottom:0; }
+
+    .tt-minwrap{
+      display:flex;
+      flex-wrap:wrap;
+      gap:4px 6px;
+      align-items:flex-start;
+    }
+
+    /* ★当駅始発：分に下線 */
+    .tt-min.origin .m{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 2px;
+    }
+
+    /* ★時刻チップ（通常＝種別色、フィルタ外＝薄グレー） */
+    .tt-min{
+      display:inline-flex;
+      align-items:flex-start;
+      gap:1px;
+      padding:2px 6px;
+      border-radius:0;
+      border:0;
+      background:transparent;
+      line-height:1.1;
+      font-variant-numeric: tabular-nums;
+      user-select:none;
+      white-space:nowrap;
+      cursor:pointer;
+      touch-action: manipulation;
+    }
+    .tt-min .m{
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--c, rgba(0,0,0,.82));
+    }
+    .tt-min .dest{
+      font-size: 11px;
+      font-weight: 900;
+      margin-top: 3px;
+      opacity: .95;
+      color: var(--c, rgba(0,0,0,.82));
+    }
+    .tt-min .ptype{
+      display:none;
+    }
+
+    .tt-min.dim{
+      border-color: transparent !important;
+      background: transparent;
+    }
+    .tt-min.dim .m,
+    .tt-min.dim .dest{
+      color: var(--dimText) !important;
+    }
+
+    .tt-legend{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      display:flex;
+      flex-direction: column;
+      gap:8px;
+      align-items:flex-start;
+    }
+    .tt-legend .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px 10px;
+      align-items:center;
+    }
+    .tt-destitem{
+      display:inline-flex;
+      align-items:center;
+      gap:2px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .tt-destitem .abbr{
+      color: var(--text);
+    }
+    .dep-board-body{
+      padding: 12px;
+    }
+    .dep-board{
+      border-radius: 14px;
+      overflow:hidden;
+      background: #0f1723;
+      color: #eff6ff;
+      border: 1px solid rgba(255,255,255,.06);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+    .dep-board-head,
+    .dep-board-row{
+      display:grid;
+      grid-template-columns: 10% 15% 20% 10% 45%;
+      gap: 8px;
+      align-items:center;
+      padding: 12px 14px;
+    }
+    .dep-board-head{
+      background: rgba(255,255,255,.05);
+      color: #b6c3d6;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
+    .dep-board-head > div{
+      display:flex;
+      align-items:center;
+    }
+    .dep-board-head > div:nth-child(1){
+      justify-content:center;
+      text-align:center;
+    }
+    .dep-board-head > div:nth-child(2){
+      justify-content:flex-start;
+      text-align:left;
+    }
+    .dep-board-head > div:nth-child(3),
+    .dep-board-head > div:nth-child(5){
+      justify-content:flex-start;
+      text-align:left;
+    }
+    .dep-board-head > div:nth-child(3){
+      margin-right: -10px;
+    }
+    .dep-board-head > div:nth-child(4){
+      justify-content:flex-start;
+      text-align:left;
+      margin-left: -16px;
+    }
+    .dep-board-row{
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .dep-board-row:first-of-type{
+      border-top: 0;
+    }
+    .dep-board-row.empty > div{
+      min-height: 1.2em;
+    }
+    .dep-board-row .message{
+      grid-column: 1 / -1;
+      text-align: center;
+      font-weight: 900;
+      font-size: 16px;
+      color: #d5deea;
+      padding: 4px 0;
+    }
+    .dep-board-row .type{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      justify-self:center;
+      min-width: 0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 900;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .dep-board-row .time{
+      justify-self:start;
+      font-weight: 900;
+      font-size: 19px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      text-align:left;
+    }
+    .dep-board-row .dest{
+      justify-self:start;
+      margin-right: -10px;
+      font-weight: 900;
+      font-size: 17px;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+    .dep-board-row .cars{
+      justify-self:start;
+      text-align:left;
+      margin-left: -16px;
+      font-weight: 900;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .dep-board-row .note{
+      justify-self:stretch;
+      min-width: 0;
+      box-sizing: border-box;
+      padding-right: 24px;
+      overflow: visible;
+      white-space: normal;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.18;
+      color: #d5deea;
+      min-height: calc(3em * 1.18);
+    }
+    .dep-board-row .note-text{
+      display: block;
+      max-width: 100%;
+      overflow: visible;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .dep-board-row .note.compact{
+      font-size: 12px;
+    }
+    .dep-board-row .note.tiny{
+      font-size: 11px;
+    }
+    .dep-board-row .note.micro{
+      font-size: 9px;
+      line-height: 1.12;
+      min-height: calc(3em * 1.12);
+    }
+    .dep-board-empty{
+      padding: 16px 12px;
+      color: #b6c3d6;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    @media (max-width: 640px){
+      .dep-board-head,
+      .dep-board-row{
+        grid-template-columns: 10% 15% 20% 10% 45%;
+        gap: 4px;
+        padding: 8px 8px;
+      }
+      .dep-board-head > div:nth-child(4){
+        margin-left: -20px;
+      }
+      .dep-board-head > div:nth-child(5){
+        margin-left: -8px;
+      }
+      .dep-board-head{
+        font-size: 10px;
+      }
+      .dep-board-row .type{
+        font-size: 9px;
+        padding: 2px 4px;
+      }
+      .dep-board-row .time{
+        font-size: 12px;
+      }
+      .dep-board-row .dest{
+        font-size: 11px;
+      }
+      .dep-board-row .cars{
+        font-size: 10px;
+        margin-left: -20px;
+      }
+      .dep-board-row .note{
+        font-size: 9px;
+        margin-left: 0;
+        padding-right: 16px;
+      }
+      .dep-board-row .note.compact{
+        font-size: 8px;
+      }
+      .dep-board-row .note.tiny{
+        font-size: 7px;
+      }
+      .dep-board-row .note.micro{
+        font-size: 6px;
+        line-height: 1.1;
+        min-height: calc(3em * 1.1);
+      }
+      .dep-board-row .message{
+        font-size: 11px;
+      }
+    }
+
+    .tt-typechip{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 900;
+      font-size: 11px;
+      cursor: pointer;
+      line-height: 1.1;
+      user-select:none;
+      white-space: nowrap;
+      background:#fff;
+      color: rgba(0,0,0,.82);
+    }
+    .tt-typechip:active{ transform: translateY(1px); }
+    .tt-typechip.on{ box-shadow: 0 0 0 3px rgba(57,158,146,.16); }
+    .tt-typechip.dim{
+      background: var(--dimBg);
+      border-color: var(--dimBorder);
+      color: var(--dimText);
+    }
+	  
+	  /* 列車時刻表：備考表示 */
+.tt-remark{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: 12px;
+  background: rgba(243,245,248,.65);
+}
+.tt-remark .h{
+  font-weight: 900;
+  font-size: 12px;
+  color: rgba(0,0,0,.72);
+  margin-bottom: 6px;
+}
+    .tt-remark .t{
+  font-weight: 800;
+  font-size: 13px;
+  color: rgba(0,0,0,.86);
+  line-height: 1.5;
+  white-space: pre-wrap; /* 改行があれば生かす */
+}
+
+    @media (min-width: 900px){
+      #trainModalCard{
+        width: min(620px, 100%);
+      }
+      #trainModalCard .modal-title .main{
+        font-size: 16px;
+      }
+      #trainModalCard .modal-title .sub{
+        font-size: 13px;
+      }
+      .train-tt-wrap th,
+      .train-tt-wrap td{
+        font-size: 14px;
+        padding-left: 6px;
+        padding-right: 6px;
+      }
+      .train-tt-wrap th:first-child,
+      .train-tt-wrap td:first-child{
+        width: 30%;
+        max-width: 30%;
+      }
+      .train-tt-wrap th:nth-child(3),
+      .train-tt-wrap td:nth-child(3){
+        width: 16px !important;
+        min-width: 16px;
+      }
+      .train-tt-wrap th:nth-child(4),
+      .train-tt-wrap td:nth-child(4),
+      .train-tt-wrap th:nth-child(5),
+      .train-tt-wrap td:nth-child(5){
+        width: 15px !important;
+        min-width: 15px;
+      }
+      .train-tt-wrap .stcell{
+        gap: 4px;
+      }
+      .train-tt-wrap .stcell .code{
+        font-size: 12px;
+      }
+      .train-tt-wrap .stcell .name{
+        font-size: 15px;
+        max-width: 100%;
+      }
+      .train-tt-wrap .tt-poscol{
+        width: 18px;
+        min-width: 18px;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      .train-tt-wrap .passnote{
+        font-size: 12px;
+      }
+      .train-tt-wrap .tt-remark .h{
+        font-size: 13px;
+      }
+      .train-tt-wrap .tt-remark .t{
+        font-size: 14px;
+      }
+    }
+
+    .loading-overlay{
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(20,68,121,.24);
+      backdrop-filter: blur(6px);
+    }
+    .loading-overlay.show{ display: flex; }
+    .loading-card{
+      min-width: min(320px, calc(100vw - 32px));
+      padding: 20px 22px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(0,0,0,.08);
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .loading-spinner{
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 4px solid rgba(57,158,146,.18);
+      border-top-color: var(--line);
+      animation: loadingSpin .8s linear infinite;
+      flex: 0 0 auto;
+    }
+    .loading-text{
+      min-width: 0;
+    }
+    .loading-text .main{
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.2;
+      color: var(--text);
+    }
+    .loading-text .sub{
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.3;
+      color: var(--muted);
+    }
+    @keyframes loadingSpin{
+      to{ transform: rotate(360deg); }
+    }
+
+    button,
+    .subbar a,
+    a.linkbtn,
+    .pill,
+    .stopped-tag,
+    #trainModalCard .modal-title .type,
+    .dep-board-row .type,
+    .tt-tab .badge,
+    [role="button"]{
+      border-radius: 0 !important;
+    }
+
+    #settingsModal .modal-close{
+      border-radius: 10px !important;
+    }
+    #settingsModal .linkbtn{
+      border-radius: 12px !important;
+    }
+    .train-label{
+      border-radius: 12px !important;
+    }
+    .train-label .type{
+      border-radius: 999px !important;
+    }
+    #trainModalCard .modal-title .type,
+    .stopped-tag{
+      border-radius: 999px !important;
+    }
+	  
+  </style>
+</head>
+
+<body oncontextmenu="return false;">
+  <header>
+    <div class="topbar">
+      <div class="leftgrp">
+        <button class="iconbtn" id="btnHelp" type="button" title="使い方">?</button>
+        <button class="iconbtn fs-icon enter" id="btnEnterFullscreen" type="button" title="全画面表示"><span class="win" aria-hidden="true"></span></button>
+        <button class="iconbtn fs-icon exit" id="btnExitFullscreen" type="button" title="全画面表示を解除" hidden><span class="win" aria-hidden="true"></span></button>
+        <button class="iconbtn" id="btnInfo" type="button" title="情報">i</button>
+      </div>
+
+      <div class="title" id="appTitle">架空鉄道列車走行位置</div>
+
+      <div class="rightgrp">
+        <button class="iconbtn" id="btnGear" type="button" title="設定">⚙</button>
+        <button class="iconbtn" id="btnClose" type="button" title="閉じる">×</button>
+      </div>
+    </div>
+
+    <div class="subbar">
+      <div class="left">
+        <button id="btnRefresh" type="button">更新</button>
+        <a href="diagram.html">ﾀﾞｲﾔｸﾞﾗﾑ</a>
+        <a href="n_rosen.html">路線時刻表</a>
+      </div>
+      <div class="pill" id="nowTime">現在時刻: ----/--/-- --:--:--</div>
+    </div>
+
+    <div class="info-panel" id="infoPanel" hidden>
+      <div class="info-row" id="dataStatus">データ: 読み込み中…<br>（しばらくお待ちください）</div>
+      <div class="info-row" id="runtimeHint">—</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="board">
+      <div class="board-body" id="boardBody">
+        <div class="line-wrap" id="lineWrap">
+          <div class="track-layer" aria-hidden="true"><div class="track"></div></div>
+          <div class="stations" id="stations"></div>
+          <div class="trains-layer" id="trainsLayer" aria-label="列車レイヤー"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div class="timebox" id="displayTimeBox">
+          <div class="label">表示時刻</div>
+          <div class="value" id="displayTime">----/--/-- --:--:--</div>
+        </div>
+        <button class="tbtn primary" id="btnNow">現在時刻へ</button>
+      </div>
+
+      <div class="footer-bottom">
+        <div class="time-controls">
+          <button class="tbtn" data-shift="-3600">-60分</button>
+          <button class="tbtn" data-shift="-900">-15分</button>
+          <button class="tbtn" data-shift="-300">-5分</button>
+          <button class="tbtn" data-shift="-60">-1分</button>
+
+          <button class="tbtn" data-shift="60">+1分</button>
+          <button class="tbtn" data-shift="300">+5分</button>
+          <button class="tbtn" data-shift="900">+15分</button>
+          <button class="tbtn" data-shift="3600">+60分</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 共通Backdrop -->
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="loading-overlay" id="loadingOverlay" hidden aria-live="polite" aria-busy="true">
+    <div class="loading-card" role="status" aria-label="列車位置データを読み込み中">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div class="loading-text">
+        <div class="main" id="loadingMain">列車位置データを読み込み中です</div>
+        <div class="sub" id="loadingSub">しばらくお待ちください</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 列車時刻表モーダル -->
+  <div class="modal" id="modal">
+    <div class="modal-card" id="trainModalCard" role="dialog" aria-modal="true" aria-label="列車時刻表">
+      <div class="modal-head">
+        <div class="modal-nav">
+          <button class="modal-back" id="modalBack" type="button" title="戻る" hidden>←</button>
+          <div class="modal-title" id="modalTitle"></div>
+        </div>
+        <button class="modal-close" id="modalClose" type="button">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- 駅時刻表モーダル -->
+  <div class="modal" id="stationTtModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="駅時刻表">
+      <div class="modal-head">
+        <div class="modal-nav">
+          <button class="modal-back" id="stationTtBack" type="button" title="戻る" hidden>←</button>
+          <div class="modal-title" id="stationTtTitle"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-print" id="stationTtPrint" type="button">印刷</button>
+          <button class="modal-close" id="stationTtClose" type="button">×</button>
+        </div>
+      </div>
+
+      <!-- 上り（左）/下り（右） -->
+      <div class="tt-tabs" role="tablist" aria-label="上り下り切替">
+        <button class="tt-tab" id="ttTabUp" type="button" role="tab" aria-selected="true" aria-controls="ttPanelUp">
+          上り <span class="badge" id="ttCountUp">--</span>
+        </button>
+        <button class="tt-tab" id="ttTabDown" type="button" role="tab" aria-selected="false" aria-controls="ttPanelDown">
+          下り <span class="badge" id="ttCountDown">--</span>
+        </button>
+      </div>
+
+      <div class="tt-body">
+        <section id="ttPanelUp" role="tabpanel" aria-labelledby="ttTabUp"></section>
+        <section id="ttPanelDown" role="tabpanel" aria-labelledby="ttTabDown" hidden></section>
+
+        <div class="tt-legend" id="ttLegend">
+          <div class="row" id="ttLegendText">種別を押すと列車が強調表示されます</div>
+          <div class="row" id="ttTypeLegend"></div>
+          <div class="row" id="ttDestLegend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 発車標モーダル -->
+  <div class="modal" id="depBoardModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="駅発車標">
+      <div class="modal-head">
+        <div class="modal-title" id="depBoardTitle"></div>
+        <button class="modal-close" id="depBoardClose" type="button">×</button>
+      </div>
+
+      <div class="tt-tabs" role="tablist" aria-label="発車標 上り下り切替">
+        <button class="tt-tab" id="depTabUp" type="button" role="tab" aria-selected="true" aria-controls="depPanelUp">
+          上り <span class="badge" id="depCountUp">--</span>
+        </button>
+        <button class="tt-tab" id="depTabDown" type="button" role="tab" aria-selected="false" aria-controls="depPanelDown">
+          下り <span class="badge" id="depCountDown">--</span>
+        </button>
+      </div>
+
+      <div class="dep-board-body">
+        <section id="depPanelUp" role="tabpanel" aria-labelledby="depTabUp"></section>
+        <section id="depPanelDown" role="tabpanel" aria-labelledby="depTabDown" hidden></section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定モーダル -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="設定">
+      <div class="modal-head">
+        <div class="modal-title">
+          <div class="main">設定</div>
+          <div class="sub">表示オプションと路線リンク</div>
+        </div>
+        <button class="modal-close" id="settingsClose" type="button">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="set-section">
+          <div class="h">データ更新</div>
+          <button class="linkbtn" id="btnCsvReload" type="button">列車位置データ再読み込み</button>
+        </div>
+
+        <div class="set-section">
+          <div class="h">列車情報の表示方法</div>
+          <div class="radio-row">
+            <label><input type="radio" name="labelMode" value="always"> ① 列車情報を常に表示</label>
+            <label><input type="radio" name="labelMode" value="toggle"> ② 列車アイコンを押すたびに列車情報を表示/非表示</label>
+          </div>
+          <div style="margin-top:8px; color:#6b7b8a; font-size:12px; font-weight:700; line-height:1.35;">
+            ※ ②の場合：列車に追従する列車情報を押すと列車時刻表が表示されます。<br>
+          </div>
+        </div>
+
+        <div class="set-section">
+          <div class="h">表示時刻</div>
+          <div class="radio-row">
+            <label><input type="radio" name="displayTimeVisibility" value="show"> ① 左下に表示する</label>
+            <label><input type="radio" name="displayTimeVisibility" value="hide"> ② 左下に表示しない</label>
+          </div>
+        </div>
+
+        <div class="set-section">
+          <div class="h">列車時刻表の通過駅表示</div>
+          <div class="radio-row">
+            <label><input type="radio" name="showPassStops" value="show"> ① 通過駅も表示する</label>
+            <label><input type="radio" name="showPassStops" value="hide"> ② 通過駅は表示しない</label>
+          </div>
+        </div>
+
+        <div class="set-section">
+          <div class="h">「行き 終電」表示ルール</div>
+          <div class="radio-row">
+            <label><input type="radio" name="lastTrainMode" value="after_origin_hour"> ① 始発駅を指定時刻以降に発車する列車のみ表示</label>
+            <label><input type="radio" name="lastTrainMode" value="all"> ② 始発駅発車時刻に関わらず表示</label>
+          </div>
+          <div class="inline-select">
+            <span>①で使う時刻</span>
+            <select id="lastTrainStartHour" aria-label="終電表示の対象開始時刻">
+              <option value="12">12時以降</option>
+              <option value="13">13時以降</option>
+              <option value="14">14時以降</option>
+              <option value="15">15時以降</option>
+              <option value="16">16時以降</option>
+              <option value="17">17時以降</option>
+              <option value="18">18時以降</option>
+              <option value="19">19時以降</option>
+              <option value="20">20時以降</option>
+              <option value="21">21時以降</option>
+              <option value="22">22時以降</option>
+              <option value="23">23時以降</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="set-section" id="routeLinksSection">
+          <div class="h" id="routeLinksHeading">架鉄線各路線</div>
+          <div class="link-grid" id="routeLinks"></div>
+        </div>
+
+        <div class="set-section">
+          <button class="linkbtn" id="btnResetSettings" type="button">設定を初期化</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 曜日別CSV（例）=====
+    const CSV_BY_DAY = {
+      mon_thu:     { up: "honsen_nobori.csv", down: "honsen_kudari.csv" },
+      friday:      { up: "honsen_fri_nobori.csv", down: "honsen_fri_kudari.csv" },
+      sat_holiday: { up: "honsen_holi_nobori.csv", down: "honsen_holi_kudari.csv" },
+    };
+
+    function formatDateKey(date){
+      return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+    }
+
+    function addDays(date, days){
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function sameDate(a, b){
+      return a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+    }
+
+    function nthMonday(year, monthIndex, nth){
+      const d = new Date(year, monthIndex, 1);
+      const offset = (8 - d.getDay()) % 7;
+      return 1 + offset + (nth - 1) * 7;
+    }
+
+    function vernalEquinoxDay(year){
+      return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+
+    function autumnEquinoxDay(year){
+      return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+
+    function baseJapaneseHolidayName(date){
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      if(month === 1 && day === 1) return "元日";
+      if(month === 1 && day === nthMonday(year, 0, 2)) return "成人の日";
+      if(month === 2 && day === 11) return "建国記念の日";
+      if(month === 2 && day === 23) return "天皇誕生日";
+      if(month === 3 && day === vernalEquinoxDay(year)) return "春分の日";
+      if(month === 4 && day === 29) return "昭和の日";
+      if(month === 5 && day === 3) return "憲法記念日";
+      if(month === 5 && day === 4) return "みどりの日";
+      if(month === 5 && day === 5) return "こどもの日";
+      if(month === 7 && day === nthMonday(year, 6, 3)) return "海の日";
+      if(month === 8 && day === 11) return "山の日";
+      if(month === 9 && day === nthMonday(year, 8, 3)) return "敬老の日";
+      if(month === 9 && day === autumnEquinoxDay(year)) return "秋分の日";
+      if(month === 10 && day === nthMonday(year, 9, 2)) return "スポーツの日";
+      if(month === 11 && day === 3) return "文化の日";
+      if(month === 11 && day === 23) return "勤労感謝の日";
+      return "";
+    }
+
+    function isJapaneseHolidayCore(date){
+      if(baseJapaneseHolidayName(date)) return true;
+      for(let back=1; back<=7; back++){
+        const prev = addDays(date, -back);
+        if(!baseJapaneseHolidayName(prev)) continue;
+        if(prev.getDay() !== 0) continue;
+        let substitute = addDays(prev, 1);
+        while(baseJapaneseHolidayName(substitute)){
+          substitute = addDays(substitute, 1);
+        }
+        return sameDate(substitute, date);
+      }
+      return false;
+    }
+
+    function isJapaneseHoliday(date){
+      if(isJapaneseHolidayCore(date)) return true;
+      const dow = date.getDay();
+      if(dow === 0 || dow === 6) return false;
+      return isJapaneseHolidayCore(addDays(date, -1)) && isJapaneseHolidayCore(addDays(date, 1));
+    }
+
+    function getOperationalDate(date){
+      const d = new Date(date.getTime());
+      if(d.getHours() < 4){
+        d.setDate(d.getDate() - 1);
+      }
+      return d;
+    }
+
+    function getDayKey(date){
+      const opDate = getOperationalDate(date);
+      const dow = opDate.getDay(); // 0=日, 6=土
+      if(dow === 0 || dow === 6) return "sat_holiday";
+      if(isJapaneseHoliday(opDate)) return "sat_holiday";
+      if(dow === 5) return "friday";
+      return "mon_thu";
+    }
+
+    let LINE_COLOR = "#399E92";
+    let IA_LINE_COLOR = "#CDB55E";
+    let TR_LINE_COLOR = "#369944";
+    let YK_LINE_COLOR = "#9F3347";
+    let EXTRA_LINE_COLORS = [
+      { prefix: "TR", color: TR_LINE_COLOR },
+      { prefix: "YK", color: YK_LINE_COLOR },
+    ];
+    const IA_BRANCH_CONFIG = {
+      anchorCode: "N03",
+      anchorName: "灘急岩国",
+      stations: [
+        { code: "IA02", name: "三笠町", dx: 212, mirrorCode: "N02", dy: 78 },
+        { code: "IA01", name: "岩国空港", dx: 212, mirrorCode: "N01", dy: 156 },
+      ],
+    };
+    let IA_BRANCH_STATION_NAMES = new Set(IA_BRANCH_CONFIG.stations.map(st => st.name));
+    let IA_BRANCH_FALLBACK_TRAVEL_SEC = 180;
+
+    // ===== 新CSV列定義（駅番号列が増えた版）=====
+    const COL_STNO  = 0;  // 駅番号 (N01など)
+    const COL_LABEL = 1;  // 行ラベル or 駅名
+    const COL_KIND  = 2;  // 着/発/番線
+    const FIRST_TRAIN_COL = 3; // 列車データ開始列
+
+    // ===== 他路線リンク（必要に応じてURLを書き換えてください） =====
+    const ROUTE_LINKS = [
+      { label: "架鉄本線", href: "../mainline/index.html" },
+      { label: "架鉄港線", href: "#" },
+      { label: "架鉄空港アクセス線",   href: "../ialine/index.html" },
+      { label: "新架鉄ライン", href: "#" },
+      { label: "架鉄街道鉄道線",   href: "#" },
+      { label: "架鉄サイトトップページ", href: "#" },
+    ];
+
+    // ===== 種別色 =====
+    const DEFAULT_TYPE_COLOR = {
+      "特急": "#164190",
+      "空特": "#47BCB9",
+      "空快": "#3695D4",
+      "空Ｐ": "#CA175E",
+      "快速": "#E99313",
+      "各停": "#393636",
+      "各停◆": "#393636",
+      "金曜": "#6B3174",
+      "鯉電": "#E10A15",
+    };
+    const TYPE_COLOR = {...DEFAULT_TYPE_COLOR};
+
+    function typeColor(type){
+      const t = (type || "").trim();
+      return TYPE_COLOR[t] || LINE_COLOR;
+    }
+
+    function idealTextColor(hex){
+      const h = (hex || "").replace("#","");
+      if(h.length !== 6) return "#fff";
+      const r = parseInt(h.slice(0,2),16);
+      const g = parseInt(h.slice(2,4),16);
+      const b = parseInt(h.slice(4,6),16);
+      const y = (r*299 + g*587 + b*114)/1000;
+      return (y >= 160) ? "#000" : "#fff";
+    }
+
+    // =========================================================
+    // 駅時刻表：行先頭文字
+    // =========================================================
+    const DEFAULT_DEST_INITIALS = {
+      "新糸崎": "新糸",
+      "広島空港": "広空",
+      "新本郷": "本郷",
+      "船木": "船木",
+      "長谷": "長谷",
+      "灘急西条": "灘条",
+      "広島地下": "地下",
+      "灘急本通": "本通",
+      "北山": "北山",
+      "灘急宮島口": "灘宮",
+      "灘急岩国": "灘岩",
+      "海土路": "海路",
+      "岩国空港": "岩空",
+      "津和野": "津野",
+      "佐伯中央": "佐中",
+      "新呉": "新呉",
+      "灘急川尻": "灘尻",
+    };
+    const DEST_INITIALS = {...DEFAULT_DEST_INITIALS};
+    function getDestInitial(destName){
+      const s = String(destName ?? "").trim();
+      if(!s) return "";
+      if(DEST_INITIALS[s]) return DEST_INITIALS[s];
+      return s.slice(0,1);
+    }
+
+    // ===== 設定（localStorage） =====
+    const SITE_CONFIG_CSV = "view_select.csv";
+    const DEFAULT_SITE_CONFIG = {
+      config_mode: "basic",
+      line_name: "架鉄本線",
+      line_short_name: "本線",
+      operator_name: "架空の鉄道",
+      train_position_page_name: "列車走行位置",
+      diagram_page_name: "ﾀﾞｲﾔｸﾞﾗﾑ",
+      route_timetable_page_name: "路線時刻表",
+      route_links_visible: "false",
+      route_links_group_name: "その他の路線",
+      route_link_1_label: "架鉄支線１",
+      route_link_1_href: "../shisen1/index.html",
+      route_link_2_label: "架鉄港線",
+      route_link_2_href: "#",
+      route_link_3_label: "架鉄空港アクセス線",
+      route_link_3_href: "../ialine/index.html",
+      route_link_4_label: "新架鉄ライン",
+      route_link_4_href: "#",
+      route_link_5_label: "架鉄街道鉄道線",
+      route_link_5_href: "#",
+      route_link_6_label: "架鉄サイトトップページ",
+      route_link_6_href: "#",
+      train_position_update_interval_seconds: "1",
+      csv_mon_thu_up: "honsen_nobori.csv",
+      csv_mon_thu_down: "honsen_kudari.csv",
+      csv_friday_up: "honsen_fri_nobori.csv",
+      csv_friday_down: "honsen_fri_kudari.csv",
+      csv_sat_holiday_up: "honsen_holi_nobori.csv",
+      csv_sat_holiday_down: "honsen_holi_kudari.csv",
+      station_start_name: "海土路",
+      line_color: "#303030",
+      branch_line_color: "#edc99d",
+      extra_line_color_1_prefix: "SH",
+      extra_line_color_1_color: "#e0ed9d",
+      extra_line_color_2_prefix: "YK",
+      extra_line_color_2_color: "#9deddd",
+      branch_anchor_code: "N03",
+      branch_anchor_name: "灘急岩国",
+      branch_station_1_code: "IA02",
+      branch_station_1_name: "三笠町",
+      branch_station_1_dx: "212",
+      branch_station_1_mirror_code: "N02",
+      branch_station_1_dy: "78",
+      branch_station_2_code: "IA01",
+      branch_station_2_name: "岩国空港",
+      branch_station_2_dx: "212",
+      branch_station_2_mirror_code: "N01",
+      branch_station_2_dy: "156",
+      branch_fallback_travel_sec: "180",
+    };
+    let siteConfig = {...DEFAULT_SITE_CONFIG};
+    const SIMPLE_CONFIG_KEYS = new Set([
+      "config_mode",
+    ]);
+    const LS_KEY_LABEL_MODE = "nakyu_label_mode"; // "always" | "toggle"
+    const LS_KEY_DISPLAY_TIME_VISIBILITY = "nakyu_display_time_visibility"; // "show" | "hide"
+    const LS_KEY_SHOW_PASS_STOPS = "nakyu_show_pass_stops"; // "show" | "hide"
+    const LS_KEY_LAST_TRAIN_MODE = "nakyu_last_train_mode"; // "after_origin_hour" | "all"
+    const LS_KEY_LAST_TRAIN_START_HOUR = "nakyu_last_train_start_hour"; // "12".."23"
+    function loadLabelMode(){
+      const v = localStorage.getItem(LS_KEY_LABEL_MODE);
+      if(v === "toggle" || v === "always") return v;
+      if(window.matchMedia && window.matchMedia("(max-width: 640px)").matches) return "toggle";
+      return "always";
+    }
+    function saveLabelMode(v){
+      localStorage.setItem(LS_KEY_LABEL_MODE, v);
+    }
+    function loadDisplayTimeVisibility(){
+      const v = localStorage.getItem(LS_KEY_DISPLAY_TIME_VISIBILITY);
+      return (v === "hide" || v === "show") ? v : "show";
+    }
+    function saveDisplayTimeVisibility(v){
+      localStorage.setItem(LS_KEY_DISPLAY_TIME_VISIBILITY, v);
+    }
+    function loadShowPassStopsMode(){
+      const v = localStorage.getItem(LS_KEY_SHOW_PASS_STOPS);
+      return (v === "hide" || v === "show") ? v : "show";
+    }
+    function saveShowPassStopsMode(v){
+      localStorage.setItem(LS_KEY_SHOW_PASS_STOPS, v);
+    }
+    function loadLastTrainMode(){
+      const v = localStorage.getItem(LS_KEY_LAST_TRAIN_MODE);
+      return (v === "all" || v === "after_origin_hour") ? v : "after_origin_hour";
+    }
+    function saveLastTrainMode(v){
+      localStorage.setItem(LS_KEY_LAST_TRAIN_MODE, v);
+    }
+    function loadLastTrainStartHour(){
+      const n = Number(localStorage.getItem(LS_KEY_LAST_TRAIN_START_HOUR));
+      return Number.isInteger(n) && n >= 12 && n <= 23 ? n : 22;
+    }
+    function saveLastTrainStartHour(v){
+      localStorage.setItem(LS_KEY_LAST_TRAIN_START_HOUR, String(v));
+    }
+    let labelMode = loadLabelMode();
+    let displayTimeVisibility = loadDisplayTimeVisibility();
+    let showPassStopsMode = loadShowPassStopsMode();
+    let lastTrainMode = loadLastTrainMode();
+    let lastTrainStartHour = loadLastTrainStartHour();
+
+    const stopStackMap = new Map();
+    const labelOpenMap = new Map();
+
+    let displayOffsetSec = 0;
+    let CUTOVER_SEC = 0;
+    let iaBranchLayout = null;
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+    function formatNow(d){
+      return `${d.getFullYear()}/${pad2(d.getMonth()+1)}/${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
+    function secToHHMM(sec){
+      if(sec == null) return "";
+      const DAY = 86400;
+      sec = Math.max(0, Math.floor(sec));
+      sec = ((sec % DAY) + DAY) % DAY;
+      const hh = Math.floor(sec / 3600);
+      const mm = Math.floor((sec % 3600) / 60);
+      return `${pad2(hh)}:${pad2(mm)}`;
+    }
+
+    function parseTimeField(v){
+  if(v == null) return {sec:null, isPass:false, isNoService:false};
+  let s = String(v).trim();
+  if(!s) return {sec:null, isPass:false, isNoService:false};
+
+  // || は「その駅を通らない」
+  if(s === "||") return {sec:null, isPass:false, isNoService:true};
+
+  const isPass = s.endsWith("?");
+  s = s.replace(/\?/g, "").replace(/\s+/g, "");
+
+  if(!/^\d+$/.test(s)) return {sec:null, isPass, isNoService:false};
+
+  // 1〜6桁は常に HHMMSS（左ゼロ埋め）
+  if(s.length > 6) s = s.slice(-6);
+  s = s.padStart(6, "0");
+
+  const hh = Number(s.slice(0,2));
+  const mm = Number(s.slice(2,4));
+  const ss = Number(s.slice(4,6));
+  if([hh,mm,ss].some(Number.isNaN)) return {sec:null, isPass, isNoService:false};
+
+  return {sec: hh*3600 + mm*60 + ss, isPass, isNoService:false};
+}
+
+    function parseCSV(text){
+      const rows = [];
+      let row = [], cur = "", inQuotes = false;
+      for(let i=0;i<text.length;i++){
+        const ch = text[i], next = text[i+1];
+        if(inQuotes){
+          if(ch === '"' && next === '"'){ cur += '"'; i++; }
+          else if(ch === '"'){ inQuotes = false; }
+          else cur += ch;
+          continue;
+        }
+        if(ch === '"') inQuotes = true;
+        else if(ch === ","){ row.push(cur); cur = ""; }
+        else if(ch === "\r"){ }
+        else if(ch === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+        else cur += ch;
+      }
+      if(cur.length || row.length){ row.push(cur); rows.push(row); }
+      return rows;
+    }
+
+    function uniqPreserve(arr){
+      const seen = new Set(), out = [];
+      for(const x of arr){ if(!seen.has(x)){ seen.add(x); out.push(x); } }
+      return out;
+    }
+
+    function escapeHtml(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function normalizeMidnight(train){
+      const DAY = 86400;
+      const ordered = [...train.stops].sort((a,b)=>{
+        return (train.dir === "up") ? (a.stationIdx - b.stationIdx) : (b.stationIdx - a.stationIdx);
+      });
+
+      let dayOffset = 0;
+      let lastAbs = null;
+
+      for(const s of ordered){
+        const any = (s.arrSec ?? s.depSec ?? s.passSec);
+        if(any == null) continue;
+
+        if(s.arrSec != null){
+          let abs = s.arrSec + dayOffset*DAY;
+          while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.arrSec + dayOffset*DAY; }
+          s.arrAbs = abs; lastAbs = abs;
+        }
+        if(s.depSec != null){
+          let abs = s.depSec + dayOffset*DAY;
+          while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.depSec + dayOffset*DAY; }
+          s.depAbs = abs; lastAbs = abs;
+        }
+        if(s.passSec != null){
+          let abs = s.passSec + dayOffset*DAY;
+          while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.passSec + dayOffset*DAY; }
+          s.passAbs = abs; lastAbs = abs;
+        }
+      }
+
+      train.stops.sort((a,b)=>{
+        const ta = (a.depAbs ?? a.arrAbs ?? a.passAbs ?? 1e18);
+        const tb = (b.depAbs ?? b.arrAbs ?? b.passAbs ?? 1e18);
+        return ta - tb;
+      });
+
+      train.segments = [];
+      for(let i=0;i<train.stops.length-1;i++){
+        const A = train.stops[i];
+        const B = train.stops[i+1];
+        const t0 = (A.depAbs ?? A.arrAbs ?? A.passAbs);
+        const t1 = (B.arrAbs ?? B.depAbs ?? B.passAbs);
+        if(t0 == null || t1 == null) continue;
+        if(t1 <= t0) continue;
+        train.segments.push({ fromIdx: A.stationIdx, toIdx: B.stationIdx, t0, t1 });
+      }
+
+      train.firstAbs = (train.stops[0]?.depAbs ?? train.stops[0]?.arrAbs ?? train.stops[0]?.passAbs ?? null);
+      const last = train.stops[train.stops.length-1];
+      train.lastAbs = (last?.arrAbs ?? last?.depAbs ?? last?.passAbs ?? null);
+
+      // Entire trains that live in the 0:00-2:59 window belong to the previous operational day.
+      if(train.firstAbs != null && train.lastAbs != null && train.lastAbs < 10800){
+        for(const s of train.stops){
+          if(s.arrAbs != null) s.arrAbs += DAY;
+          if(s.depAbs != null) s.depAbs += DAY;
+          if(s.passAbs != null) s.passAbs += DAY;
+        }
+        train.firstAbs += DAY;
+        train.lastAbs += DAY;
+      }
+    }
+
+    // ★追加：serviceStart/serviceEnd（秒）を abs に揃える
+    function alignAbsAroundRef(sec, refAbs){
+      if(sec == null || refAbs == null) return null;
+      const DAY = 86400;
+      let abs = sec;
+      // refAbs の近く（±12時間以内）になるように DAY を足し引き
+      while(abs - refAbs > 43200) abs -= DAY;
+      while(refAbs - abs > 43200) abs += DAY;
+      return abs;
+    }
+
+    // ★新CSV：駅リスト抽出（col0=駅番号, col1=駅名, col2=着発番線）
+    function extractStationsFromUpCsv(csvText){
+      const rows = parseCSV(csvText).map(r => r.map(c => (c ?? "").trim()));
+
+      const startName = configText("station_start_name").trim() || "海土路";
+      const isMainStationRow = (r) => {
+        const code = (r[COL_STNO] ?? "").trim();
+        const name = (r[COL_LABEL] ?? "").trim();
+        const kind = (r[COL_KIND] ?? "").trim();
+        return !!name
+          && !( /^IA\d+/i.test(code) || IA_BRANCH_STATION_NAMES.has(name) )
+          && (kind === "着" || kind === "発" || kind === "番線");
+      };
+      let startRow = rows.findIndex(r => (r[COL_LABEL] ?? "").trim() === startName && isMainStationRow(r));
+      if(startRow < 0) startRow = rows.findIndex(isMainStationRow);
+      if(startRow < 0) throw new Error("駅リストを抽出できる行が見つかりません（上りCSV）");
+
+      const list = [];
+      for(let i=startRow;i<rows.length;i++){
+        const code = (rows[i][COL_STNO] ?? "").trim();
+        const name = (rows[i][COL_LABEL] ?? "").trim();
+        const kind = (rows[i][COL_KIND] ?? "").trim();
+        if(!name) continue;
+        if(/^IA\d+/i.test(code) || IA_BRANCH_STATION_NAMES.has(name)) continue;
+
+        // 駅セクションは「着/発/番線」のいずれかがある行として拾う
+        if(!(kind === "着" || kind === "発" || kind === "番線")) continue;
+
+        list.push({ code, name });
+      }
+
+      const seen = new Set();
+      const out = [];
+      for(const x of list){
+        if(seen.has(x.name)) continue;
+        seen.add(x.name);
+        out.push(x);
+      }
+
+      return out.map((st, i) => ({
+        idx: i,
+        code: st.code || `${String(i+1).padStart(2,"0")}`,
+        name: st.name
+      }));
+    }
+
+    function buildDisplayStationDefs(rows, refStations){
+      const refMap = new Map(refStations.map(st => [st.name, st]));
+      const defs = [];
+      const defMap = new Map();
+
+      for(let i=0;i<rows.length;i++){
+        const code = (rows[i][COL_STNO] ?? "").trim();
+        const name = (rows[i][COL_LABEL] ?? "").trim();
+        const kind = (rows[i][COL_KIND] ?? "").trim();
+        if(!name) continue;
+        if(!(kind === "着" || kind === "発" || kind === "番線")) continue;
+
+        let def = defMap.get(name);
+        if(!def){
+          const ref = refMap.get(name) || null;
+          def = {
+            code: code || ref?.code || "",
+            name,
+            stationIdx: ref?.idx ?? null,
+            arrRows: [],
+            depRows: [],
+            trackRows: [],
+          };
+          defMap.set(name, def);
+          defs.push(def);
+        }else if(code && !def.code){
+          def.code = code;
+        }
+
+        if(kind === "着") def.arrRows.push(i);
+        if(kind === "発") def.depRows.push(i);
+        if(kind === "番線") def.trackRows.push(i);
+      }
+
+      return defs;
+    }
+
+    function pickFirstTimeField(rows, rowIndexes, col){
+      for(const rowIdx of (rowIndexes || [])){
+        const parsed = parseTimeField(rows[rowIdx]?.[col] ?? "");
+        if(parsed.sec != null || parsed.isPass){
+          return parsed;
+        }
+      }
+      return {sec:null, isPass:false, isNoService:false};
+    }
+
+    function pickFirstTrackValue(rows, rowIndexes, col){
+      for(const rowIdx of (rowIndexes || [])){
+        const v = String(rows[rowIdx]?.[col] ?? "").trim();
+        if(v && v !== "||") return v;
+      }
+      return "";
+    }
+
+    function buildStopsFromDefs(rows, col, defs){
+      const stops = [];
+
+      for(const st of defs){
+        const arr = pickFirstTimeField(rows, st.arrRows, col);
+        const dep = pickFirstTimeField(rows, st.depRows, col);
+        if(arr.sec == null && dep.sec == null) continue;
+
+        let arrSec = arr.sec;
+        let depSec = dep.sec;
+        let passSec = null;
+
+        if(arr.isPass || dep.isPass){
+          passSec = (arr.sec ?? dep.sec);
+          arrSec = null;
+          depSec = null;
+        }
+
+        stops.push({
+          stationIdx: Number.isFinite(st.stationIdx) ? st.stationIdx : null,
+          stationName: st.name,
+          code: st.code,
+          track: pickFirstTrackValue(rows, st.trackRows, col),
+          arrSec, depSec, passSec,
+          arrAbs:null, depAbs:null, passAbs:null,
+        });
+      }
+
+      return stops;
+    }
+
+    function normalizeStopsByOrder(stops, refAbs = null){
+      if(refAbs != null){
+        for(const s of stops){
+          s.arrAbs = (s.arrSec != null) ? alignAbsAroundRef(s.arrSec, refAbs) : null;
+          s.depAbs = (s.depSec != null) ? alignAbsAroundRef(s.depSec, refAbs) : null;
+          s.passAbs = (s.passSec != null) ? alignAbsAroundRef(s.passSec, refAbs) : null;
+        }
+
+        stops.sort((a,b)=>{
+          const ta = (a.depAbs ?? a.arrAbs ?? a.passAbs ?? 1e18);
+          const tb = (b.depAbs ?? b.arrAbs ?? b.passAbs ?? 1e18);
+          return ta - tb;
+        });
+        return;
+      }
+
+      const DAY = 86400;
+      let dayOffset = 0;
+      let lastAbs = null;
+
+      for(const s of stops){
+        const any = (s.arrSec ?? s.depSec ?? s.passSec);
+        if(any == null) continue;
+
+        if(s.arrSec != null){
+          let abs = s.arrSec + dayOffset * DAY;
+          while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.arrSec + dayOffset * DAY; }
+          s.arrAbs = abs;
+          lastAbs = abs;
+        }
+        if(s.depSec != null){
+          let abs = s.depSec + dayOffset * DAY;
+          while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.depSec + dayOffset * DAY; }
+          s.depAbs = abs;
+          lastAbs = abs;
+        }
+        if(s.passSec != null){
+          let abs = s.passSec + dayOffset * DAY;
+          while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.passSec + dayOffset * DAY; }
+          s.passAbs = abs;
+          lastAbs = abs;
+        }
+      }
+
+      stops.sort((a,b)=>{
+        const ta = (a.depAbs ?? a.arrAbs ?? a.passAbs ?? 1e18);
+        const tb = (b.depAbs ?? b.arrAbs ?? b.passAbs ?? 1e18);
+        return ta - tb;
+      });
+    }
+
+    // ★新CSV：ヘッダ行index固定
+    const ROW_REMARK = 1;   // 2行目 備考
+    const ROW_CARS   = 3;   // 4行目 両数
+    const ROW_TRAINNO= 4;   // 5行目 列車番号
+    const ROW_TYPE   = 6;   // 7行目 列車種別
+    const ROW_NAME   = 7;   // 8行目 列車名
+    const ROW_GOSU   = 8;   // 9行目 号数(数字)
+    const ROW_GO     = 9;   // 10行目 "号"
+    const ROW_ORIGIN = 10;  // 11行目 始発駅
+    const ROW_START  = 12;  // 13行目 始発駅に到着する時間（あれば発車前表示）
+    const ROW_DEST   = 14;  // 15行目 終着駅
+    const ROW_END    = 16;  // 17行目 終着駅を去る時間（あれば延長表示）
+
+    function parseScheduleWithRefStations(csvText, dir, sourceName, refStations){
+      const rows = parseCSV(csvText).map(r => r.map(c => (c ?? "").trim()));
+      const displayStationDefs = buildDisplayStationDefs(rows, refStations);
+
+      // 駅名→（着/発/番線）行index
+      const stationRowMap = new Map();
+      for(const st of refStations){
+        stationRowMap.set(st.name, {arrRows:[], depRows:[], trackRows:[]});
+      }
+
+      for(let i=0;i<rows.length;i++){
+        const stName = (rows[i][COL_LABEL] ?? "").trim();
+        const kind   = (rows[i][COL_KIND] ?? "").trim();
+        if(!stName || !stationRowMap.has(stName)) continue;
+
+        const obj = stationRowMap.get(stName);
+        if(kind === "着") obj.arrRows.push(i);
+        if(kind === "発") obj.depRows.push(i);
+        if(kind === "番線") obj.trackRows.push(i);
+      }
+
+      const maxCols = Math.max(...rows.map(r => r.length));
+      const trainCols = [];
+      for(let c=FIRST_TRAIN_COL;c<maxCols;c++){
+        const no = (rows[ROW_TRAINNO]?.[c] ?? "").trim();
+        if(no) trainCols.push(c);
+      }
+
+      const trains = [];
+      for(const c of trainCols){
+        const rawNo = (rows[ROW_TRAINNO]?.[c] ?? "").trim();
+        const trainNo = rawNo;
+        const trainId = `${sourceName}:${dir}:col${c}:${rawNo || "NONO"}`;
+
+        const type = (rows[ROW_TYPE]?.[c] ?? "").trim();
+        const tname = (rows[ROW_NAME]?.[c] ?? "").trim();
+
+        const dest = (rows[ROW_DEST]?.[c] ?? "").trim();
+        const origin = (rows[ROW_ORIGIN]?.[c] ?? "").trim();
+
+        const cars = (rows[ROW_CARS]?.[c] ?? "").trim();
+        const zPart = (rows[ROW_GOSU]?.[c] ?? "").trim();   // 数字
+        const yPart = (rows[ROW_GO]?.[c] ?? "").trim();     // "号"
+        const remark = (rows[ROW_REMARK]?.[c] ?? "").trim();
+
+        const startSec = parseTimeField(rows[ROW_START]?.[c] ?? "").sec; // あれば使う
+        const endSec   = parseTimeField(rows[ROW_END]?.[c] ?? "").sec;   // あれば使う
+
+        const stops = buildStopsFromDefs(rows, c, refStations.map(st => {
+          const map = stationRowMap.get(st.name) || {};
+          return {
+            code: st.code,
+            name: st.name,
+            stationIdx: st.idx,
+            arrRows: map.arrRows ?? [],
+            depRows: map.depRows ?? [],
+            trackRows: map.trackRows ?? [],
+          };
+        }));
+        const displayStops = buildStopsFromDefs(rows, c, displayStationDefs);
+
+        const train = {
+          dir,
+          trainId,
+          trainNo,
+          type,
+          name: tname || "",
+          dest,
+          origin,
+          cars,
+          zPart,
+          yPart,
+          remark,
+          // ★追加：サービス開始/終了（13/17行目）
+          serviceStartSec: startSec ?? null,
+          serviceEndSec: endSec ?? null,
+          serviceStartAbs: null,
+          serviceEndAbs: null,
+          serviceStartStationIdx: null, // 始発駅のidx（見つかれば）
+          serviceEndStationIdx: null,   // 終着駅のidx（見つかれば）
+          stops,
+          displayStops,
+          segments: [],
+          firstAbs: null,
+          lastAbs: null,
+        };
+
+        normalizeMidnight(train);
+        normalizeStopsByOrder(train.displayStops, train.firstAbs);
+
+        // ★始発駅/終着駅のidx（駅名から推定）
+        if(train.origin){
+          const st = refStations.find(s => s.name === train.origin);
+          if(st) train.serviceStartStationIdx = st.idx;
+        }
+        if(train.dest){
+          const st = refStations.find(s => s.name === train.dest);
+          if(st) train.serviceEndStationIdx = st.idx;
+        }
+
+        // ★13行目の時刻がある場合：firstAbs の近くに揃えて abs 化
+        if(train.serviceStartSec != null && train.firstAbs != null){
+          train.serviceStartAbs = alignAbsAroundRef(train.serviceStartSec, train.firstAbs);
+        }
+        // ★17行目の時刻がある場合：lastAbs の近くに揃えて abs 化
+        if(train.serviceEndSec != null && train.lastAbs != null){
+          train.serviceEndAbs = alignAbsAroundRef(train.serviceEndSec, train.lastAbs);
+        }
+
+        trains.push(train);
+      }
+
+      return { direction: dir, stations: refStations, trains };
+    }
+
+    function computeCutoverSec(...schedules){
+      let maxAfterMidnight = 0;
+      const DAY = 86400;
+
+      for(const sch of schedules){
+        if(!sch?.trains) continue;
+        for(const t of sch.trains){
+          for(const s of t.stops){
+            const list = [s.arrAbs, s.depAbs, s.passAbs].filter(v => v != null);
+            for(const abs of list){
+              if(abs >= DAY){
+                maxAfterMidnight = Math.max(maxAfterMidnight, abs - DAY);
+              }
+            }
+          }
+        }
+      }
+      return Math.max(0, Math.floor(maxAfterMidnight));
+    }
+
+    let STATION_COUNT = 39;
+
+    // ★拡張：13行目(serviceStartAbs)がある間は「始発駅に停車中」扱いで表示
+    function calcTrainPosition(train, nowAbs){
+      // 1) 駅で停車中（arrAbs〜depAbs / 発のみ駅は depAbs の20秒前〜depAbs）
+      for(const s of train.stops){
+        if(s.arrAbs != null && s.depAbs != null){
+          if(nowAbs >= s.arrAbs && nowAbs < s.depAbs){
+            return { status:"stopped", y01: s.stationIdx / (STATION_COUNT-1), atStationIdx: s.stationIdx };
+          }
+        }
+        if(s.arrAbs == null && s.depAbs != null){
+          const stopStart = s.depAbs - 20;
+          if(nowAbs >= stopStart && nowAbs <= s.depAbs){
+            return { status:"stopped", y01: s.stationIdx / (STATION_COUNT-1), atStationIdx: s.stationIdx };
+          }
+        }
+      }
+
+      // 2) 発車前のサービス開始（13行目）〜 firstAbs の間：始発駅にいる扱い（あれば）
+      if(train.serviceStartAbs != null && train.firstAbs != null && nowAbs >= train.serviceStartAbs && nowAbs < train.firstAbs){
+        if(Number.isFinite(train.serviceStartStationIdx)){
+          return { status:"stopped", y01: train.serviceStartStationIdx / (STATION_COUNT-1), atStationIdx: train.serviceStartStationIdx };
+        }
+      }
+
+      // 3) サービス終了延長（17行目）で lastAbs 以降も終着駅にいる扱い（あれば）
+      if(train.serviceEndAbs != null && train.lastAbs != null && nowAbs > train.lastAbs && nowAbs <= train.serviceEndAbs){
+        if(Number.isFinite(train.serviceEndStationIdx)){
+          return { status:"stopped", y01: train.serviceEndStationIdx / (STATION_COUNT-1), atStationIdx: train.serviceEndStationIdx };
+        }
+        return { status:"not_in_service", y01: null };
+      }
+
+      // 4) 通常の運行範囲外
+      if(train.firstAbs == null || train.lastAbs == null) return { status:"not_in_service", y01: null };
+
+      // ★サービス開始/終了があればそれを優先して範囲判定（空欄なら従来どおり）
+      const inStart = (train.serviceStartAbs != null) ? train.serviceStartAbs : train.firstAbs;
+      const inEnd   = (train.serviceEndAbs != null) ? train.serviceEndAbs : train.lastAbs;
+
+      if(nowAbs < inStart || nowAbs > inEnd) return { status:"not_in_service", y01: null };
+      if(train.lastAbs != null && nowAbs > train.lastAbs && !Number.isFinite(train.serviceEndStationIdx)){
+        return { status:"not_in_service", y01: null };
+      }
+
+      // 5) 走行中（segments）
+      for(const seg of train.segments){
+        if(nowAbs >= seg.t0 && nowAbs < seg.t1){
+          const frac = (nowAbs - seg.t0) / (seg.t1 - seg.t0);
+          const posIdx = seg.fromIdx + (seg.toIdx - seg.fromIdx) * frac;
+          return { status:"running", y01: posIdx / (STATION_COUNT-1) };
+        }
+      }
+
+      // 6) フォールバック：最寄り停車点
+      let best = null;
+      for(const s of train.stops){
+        const t = (s.depAbs ?? s.arrAbs ?? s.passAbs);
+        if(t == null) continue;
+        const d = Math.abs(nowAbs - t);
+        if(best == null || d < best.d) best = {d, s};
+      }
+      if(best) return { status:"running", y01: best.s.stationIdx / (STATION_COUNT-1) };
+      return { status:"not_in_service", y01: null };
+    }
+
+    const nowTimeEl = document.getElementById("nowTime");
+    const appTitle = document.getElementById("appTitle");
+    const displayTimeBox = document.getElementById("displayTimeBox");
+    const displayTimeEl = document.getElementById("displayTime");
+    const btnRefresh = document.getElementById("btnRefresh");
+    const dataStatus = document.getElementById("dataStatus");
+    const lineWrap = document.getElementById("lineWrap");
+    const stationsEl = document.getElementById("stations");
+    const trainsLayer = document.getElementById("trainsLayer");
+    const runtimeHint = document.getElementById("runtimeHint");
+
+    function applyDisplayTimeVisibility(){
+      displayTimeBox.classList.toggle("is-hidden", displayTimeVisibility === "hide");
+    }
+    applyDisplayTimeVisibility();
+
+    function isSimpleConfigMode(){
+      const mode = String(siteConfig.config_mode ?? DEFAULT_SITE_CONFIG.config_mode ?? "").trim().toLowerCase();
+      return mode === "simple" || mode === "簡易" || mode === "簡易モード";
+    }
+    function configText(key){
+      if(isSimpleConfigMode() && !SIMPLE_CONFIG_KEYS.has(key)){
+        return String(DEFAULT_SITE_CONFIG[key] ?? "");
+      }
+      return String(siteConfig[key] ?? DEFAULT_SITE_CONFIG[key] ?? "");
+    }
+    function configBool(key){
+      const v = configText(key).trim().toLowerCase();
+      return !(v === "false" || v === "0" || v === "no" || v === "非表示" || v === "hide");
+    }
+    function configNumber(key, fallback){
+      const n = Number(configText(key));
+      return Number.isFinite(n) ? n : fallback;
+    }
+    function configColor(key, fallback){
+      const v = configText(key).trim();
+      return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+    }
+    function routeLinksFromConfig(){
+      const links = [];
+      for(let i=1;i<=12;i++){
+        const label = configText(`route_link_${i}_label`).trim();
+        const href = configText(`route_link_${i}_href`).trim();
+        if(label && href) links.push({label, href});
+      }
+      return links.length ? links : ROUTE_LINKS;
+    }
+
+    function applyCsvFileConfig(){
+      CSV_BY_DAY.mon_thu.up = configText("csv_mon_thu_up").trim() || CSV_BY_DAY.mon_thu.up;
+      CSV_BY_DAY.mon_thu.down = configText("csv_mon_thu_down").trim() || CSV_BY_DAY.mon_thu.down;
+      CSV_BY_DAY.friday.up = configText("csv_friday_up").trim() || CSV_BY_DAY.friday.up;
+      CSV_BY_DAY.friday.down = configText("csv_friday_down").trim() || CSV_BY_DAY.friday.down;
+      CSV_BY_DAY.sat_holiday.up = configText("csv_sat_holiday_up").trim() || CSV_BY_DAY.sat_holiday.up;
+      CSV_BY_DAY.sat_holiday.down = configText("csv_sat_holiday_down").trim() || CSV_BY_DAY.sat_holiday.down;
+    }
+
+    function readBranchStationsFromConfig(){
+      const stations = [];
+      const fallbackByIndex = new Map(
+        IA_BRANCH_CONFIG.stations.map((st, idx) => [idx + 1, st])
+      );
+      for(let i=1;i<=20;i++){
+        const fallback = fallbackByIndex.get(i) || null;
+        const code = configText(`branch_station_${i}_code`).trim() || fallback?.code || "";
+        const name = configText(`branch_station_${i}_name`).trim() || fallback?.name || "";
+        const mirrorCode = configText(`branch_station_${i}_mirror_code`).trim() || fallback?.mirrorCode || "";
+        if(!code && !name) continue;
+        stations.push({
+          code,
+          name,
+          dx: configNumber(`branch_station_${i}_dx`, fallback?.dx ?? 0),
+          mirrorCode,
+          dy: configNumber(`branch_station_${i}_dy`, fallback?.dy ?? 0),
+        });
+      }
+      return stations;
+    }
+
+    function applyLineAndBranchConfig(){
+      LINE_COLOR = configColor("line_color", LINE_COLOR);
+      IA_LINE_COLOR = configColor("branch_line_color", IA_LINE_COLOR);
+      TR_LINE_COLOR = configColor("extra_line_color_1_color", TR_LINE_COLOR);
+      YK_LINE_COLOR = configColor("extra_line_color_2_color", YK_LINE_COLOR);
+      EXTRA_LINE_COLORS = [];
+      for(let i=1;i<=8;i++){
+        const prefix = configText(`extra_line_color_${i}_prefix`).trim();
+        const color = configColor(`extra_line_color_${i}_color`, "");
+        if(prefix && color) EXTRA_LINE_COLORS.push({prefix, color});
+      }
+      IA_BRANCH_CONFIG.anchorCode = configText("branch_anchor_code").trim() || IA_BRANCH_CONFIG.anchorCode;
+      IA_BRANCH_CONFIG.anchorName = configText("branch_anchor_name").trim() || IA_BRANCH_CONFIG.anchorName;
+      const branchStations = readBranchStationsFromConfig();
+      if(branchStations.length) IA_BRANCH_CONFIG.stations = branchStations;
+      IA_BRANCH_STATION_NAMES = new Set(IA_BRANCH_CONFIG.stations.map(st => st.name));
+      IA_BRANCH_FALLBACK_TRAVEL_SEC = Math.max(0, configNumber("branch_fallback_travel_sec", IA_BRANCH_FALLBACK_TRAVEL_SEC));
+      document.documentElement.style.setProperty("--line", LINE_COLOR);
+    }
+
+    function applyTypeAndDestinationConfig(){
+      Object.keys(TYPE_COLOR).forEach(key => delete TYPE_COLOR[key]);
+      Object.assign(TYPE_COLOR, DEFAULT_TYPE_COLOR);
+      Object.keys(DEST_INITIALS).forEach(key => delete DEST_INITIALS[key]);
+      Object.assign(DEST_INITIALS, DEFAULT_DEST_INITIALS);
+      for(const [key, value] of Object.entries(siteConfig)){
+        if(isSimpleConfigMode() && !SIMPLE_CONFIG_KEYS.has(key)) continue;
+        const v = String(value ?? "").trim();
+        if(!v) continue;
+        if(key.startsWith("type_color_") && /^#[0-9a-fA-F]{6}$/.test(v)){
+          TYPE_COLOR[key.slice("type_color_".length)] = v;
+        }
+        if(key.startsWith("dest_initial_")){
+          DEST_INITIALS[key.slice("dest_initial_".length)] = v;
+        }
+      }
+    }
+
+    function applyDataConfig(){
+      applyCsvFileConfig();
+      applyLineAndBranchConfig();
+      applyTypeAndDestinationConfig();
+    }
+
+    async function loadSiteConfig(){
+      try{
+        const r = await fetch(`${SITE_CONFIG_CSV}?ts=${Date.now()}`, {cache:"no-store"});
+        if(!r.ok) throw new Error(`設定CSVの読み込み失敗: ${r.status}`);
+        const rows = parseCSV(await r.text());
+        const next = {...DEFAULT_SITE_CONFIG};
+        for(const row of rows){
+          const key = String(row[0] ?? "").replace(/^\uFEFF/, "").trim();
+          if(!key || key === "key" || key.startsWith("#")) continue;
+          next[key] = String(row[1] ?? "").trim();
+        }
+        siteConfig = next;
+      }
+      catch(e){
+        console.warn(e);
+        siteConfig = {...DEFAULT_SITE_CONFIG};
+      }
+      applySiteConfig();
+    }
+
+    function applySiteConfig(){
+      applyDataConfig();
+      const lineName = configText("line_name");
+      const positionName = configText("train_position_page_name");
+      const diagramName = configText("diagram_page_name");
+      const routeName = configText("route_timetable_page_name");
+      document.title = `${lineName}${positionName}(試用版)`;
+      appTitle.textContent = `${lineName}${positionName}`;
+      document.querySelector('.subbar a[href="diagram.html"]').textContent = diagramName;
+      document.querySelector('.subbar a[href="n_rosen.html"]').textContent = routeName;
+      const routeLinksSection = document.getElementById("routeLinksSection");
+      const routeLinksHeading = document.getElementById("routeLinksHeading");
+      routeLinksSection.hidden = !configBool("route_links_visible");
+      routeLinksHeading.textContent = `${configText("route_links_group_name")}各路線`;
+    }
+    function openPrintView(titleText, contentHtml){
+      const html = `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(titleText)}</title>
+  <style>
+    body{ margin:0; color:#111; background:#fff; font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; line-height:1.45; }
+    .toolbar{ position:sticky; top:0; display:flex; gap:8px; justify-content:flex-end; padding:10px; background:#f1f3f6; border-bottom:1px solid #ccc; z-index:10; }
+    .toolbar button{ border:1px solid #888; background:#fff; padding:8px 12px; font-weight:900; cursor:pointer; }
+    .print-brand{ margin:0 0 6px; color:#444; font-size:13px; font-weight:900; }
+    main{ padding:18px; }
+    h1{ margin:0 0 12px; font-size:22px; line-height:1.25; }
+    .modal-title .main{ font-size:18px; font-weight:900; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .modal-title .sub{ margin-top:4px; color:#444; font-size:12px; font-weight:700; }
+    .tt-tabs,.tt-legend{ margin:10px 0; display:flex; gap:8px; flex-wrap:wrap; }
+    .tt-tab,.tt-typechip{ border:1px solid #aaa; background:#fff; color:#111; padding:5px 8px; font-weight:900; }
+    [hidden]{ display:none !important; }
+    table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
+    tr{ page-break-inside:avoid; }
+    th,td{ border:1px solid #777; padding:6px 8px; font-size:12px; vertical-align:top; }
+    th{ background:#f2f2f2; font-weight:900; }
+    button{ font:inherit; color:inherit; border:0; background:transparent; padding:0; text-align:inherit; }
+    .modal-back,.modal-close,.modal-print,.train-tt-rail,.train-tt-dot,.train-tt-icon{ display:none !important; }
+    .tt-min{ display:inline-block; margin:1px 4px 1px 0; white-space:nowrap; }
+    .tt-min .ptype{ display:block; margin-top:1px; font-size:8px; line-height:1; color:#555; font-weight:800; }
+    .badge{ color:#555; }
+    @media print{ .toolbar{ display:none; } main{ padding:0; } @page{ margin:12mm; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">印刷</button><button onclick="window.close()">閉じる</button></div>
+  <main><div class="print-brand">${escapeHtml(configText("operator_name"))}　${escapeHtml(configText("line_name"))}</div><h1>${escapeHtml(titleText)}</h1>${contentHtml}</main>
+</body>
+</html>`;
+      const url = URL.createObjectURL(new Blob([html], {type:"text/html"}));
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      return;
+      const win = window.open("", "_blank");
+      if(!win){
+        alert("印刷用タブを開けませんでした。ポップアップ設定を確認してください。");
+        return;
+      }
+      win.document.open();
+      win.document.write(`<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(titleText)}</title>
+  <style>
+    body{ margin:0; color:#111; background:#fff; font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; line-height:1.45; }
+    .toolbar{ position:sticky; top:0; display:flex; gap:8px; justify-content:flex-end; padding:10px; background:#f1f3f6; border-bottom:1px solid #ccc; z-index:10; }
+    .toolbar button{ border:1px solid #888; background:#fff; padding:8px 12px; font-weight:900; cursor:pointer; }
+    .print-brand{ margin:0 0 6px; color:#444; font-size:13px; font-weight:900; }
+    main{ padding:18px; }
+    h1{ margin:0 0 12px; font-size:22px; line-height:1.25; }
+    .modal-title .main{ font-size:18px; font-weight:900; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .modal-title .sub{ margin-top:4px; color:#444; font-size:12px; font-weight:700; }
+    .tt-tabs,.tt-legend{ margin:10px 0; display:flex; gap:8px; flex-wrap:wrap; }
+    .tt-tab,.tt-typechip{ border:1px solid #aaa; background:#fff; color:#111; padding:5px 8px; font-weight:900; }
+    [hidden]{ display:none !important; }
+    table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
+    tr{ page-break-inside:avoid; }
+    th,td{ border:1px solid #777; padding:6px 8px; font-size:12px; vertical-align:top; }
+    th{ background:#f2f2f2; font-weight:900; }
+    button{ font:inherit; color:inherit; border:0; background:transparent; padding:0; text-align:inherit; }
+    .modal-back,.modal-close,.modal-print,.train-tt-rail,.train-tt-dot,.train-tt-icon{ display:none !important; }
+    .tt-min{ display:inline-block; margin:1px 4px 1px 0; white-space:nowrap; }
+    .badge{ color:#555; }
+    @media print{
+      .toolbar{ display:none; }
+      main{ padding:0; }
+      @page{ margin:12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">印刷</button><button onclick="window.close()">閉じる</button></div>
+  <main><div class="print-brand">${escapeHtml(configText("operator_name"))}　${escapeHtml(configText("line_name"))}</div><h1>${escapeHtml(titleText)}</h1>${contentHtml}</main>
+</body>
+</html>`);
+      win.document.close();
+    }
+    const infoPanel = document.getElementById("infoPanel");
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const loadingMain = document.getElementById("loadingMain");
+    const loadingSub = document.getElementById("loadingSub");
+
+    const modalBackdrop = document.getElementById("modalBackdrop");
+
+    const modal = document.getElementById("modal");
+    const trainModalCard = document.getElementById("trainModalCard");
+    const modalBack = document.getElementById("modalBack");
+    const modalClose = document.getElementById("modalClose");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+
+    const settingsModal = document.getElementById("settingsModal");
+    const settingsClose = document.getElementById("settingsClose");
+    const btnCsvReload = document.getElementById("btnCsvReload");
+    const btnResetSettings = document.getElementById("btnResetSettings");
+    const routeLinksEl = document.getElementById("routeLinks");
+
+    // ===== 駅時刻表モーダル =====
+    const stationTtModal = document.getElementById("stationTtModal");
+    const stationTtBack = document.getElementById("stationTtBack");
+    const stationTtClose = document.getElementById("stationTtClose");
+    const stationTtPrint = document.getElementById("stationTtPrint");
+    const stationTtTitle = document.getElementById("stationTtTitle");
+    const ttTabUp = document.getElementById("ttTabUp");
+    const ttTabDown = document.getElementById("ttTabDown");
+    const ttPanelUp = document.getElementById("ttPanelUp");
+    const ttPanelDown = document.getElementById("ttPanelDown");
+    const ttCountUp = document.getElementById("ttCountUp");
+    const ttCountDown = document.getElementById("ttCountDown");
+    const ttTypeLegend = document.getElementById("ttTypeLegend");
+    const ttDestLegend = document.getElementById("ttDestLegend");
+    const btnEnterFullscreen = document.getElementById("btnEnterFullscreen");
+    const btnExitFullscreen = document.getElementById("btnExitFullscreen");
+    const depBoardModal = document.getElementById("depBoardModal");
+    const depBoardClose = document.getElementById("depBoardClose");
+    const depBoardTitle = document.getElementById("depBoardTitle");
+    const depTabUp = document.getElementById("depTabUp");
+    const depTabDown = document.getElementById("depTabDown");
+    const depPanelUp = document.getElementById("depPanelUp");
+    const depPanelDown = document.getElementById("depPanelDown");
+    const depCountUp = document.getElementById("depCountUp");
+    const depCountDown = document.getElementById("depCountDown");
+
+    let stationTypeFilter = null;
+    let openedTrainId = null;
+    let openedTrainFocusStIdx = null;
+    let lastTrainIdsByDest = new Set();
+    let modalBackState = null;
+
+    function showBackdrop(){ modalBackdrop.classList.add("show"); }
+    function hideBackdrop(){ modalBackdrop.classList.remove("show"); }
+    function syncFullscreenButtons(){
+      const active = !!document.fullscreenElement;
+      btnEnterFullscreen.hidden = active;
+      btnExitFullscreen.hidden = !active;
+    }
+    async function enterFullscreenMode(){
+      try{
+        await document.documentElement.requestFullscreen();
+      }catch(e){
+        alert("全画面表示にできませんでした。");
+      }
+    }
+    async function exitFullscreenMode(){
+      try{
+        if(document.fullscreenElement) await document.exitFullscreen();
+      }catch(e){
+        alert("全画面表示を解除できませんでした。");
+      }
+    }
+
+    function closeAllModals(){
+      modal.classList.remove("show");
+      settingsModal.classList.remove("show");
+      stationTtModal.classList.remove("show");
+      depBoardModal.classList.remove("show");
+      hideBackdrop();
+      openedTrainId = null;
+      openedTrainFocusStIdx = null;
+      modalBackState = null;
+      modalBack.hidden = true;
+      stationTtBack.hidden = true;
+    }
+
+    function goBackModal(){
+      const backState = modalBackState;
+      if(!backState) return;
+
+      modalBackState = null;
+      modalBack.hidden = true;
+      stationTtBack.hidden = true;
+
+      if(backState.type === "station"){
+        openStationTimetable(backState.stRef ?? backState.stIdx ?? null, null);
+        return;
+      }
+
+      if(backState.type === "train"){
+        const train = findTrainById(backState.trainId);
+        if(train){
+          openModalForTrain(train, backState.focusStationIdx ?? null, null);
+          return;
+        }
+      }
+
+      closeAllModals();
+    }
+
+    function getTrainTerminalAbs(train){
+      if(!train) return null;
+
+      if(train.serviceEndAbs != null) return train.serviceEndAbs;
+      if(train.serviceEndSec != null && train.lastAbs != null){
+        return alignAbsAroundRef(train.serviceEndSec, train.lastAbs);
+      }
+      return train.lastAbs ?? null;
+    }
+
+    function computeLastTrainIdsByDestination(...schedules){
+      const trainsByDest = new Map();
+      const thresholdSec = lastTrainStartHour * 3600;
+
+      for(const sch of schedules){
+        for(const train of (sch?.trains || [])){
+          const dest = trainDestFallback(train).trim();
+          if(!dest) continue;
+          const dirKey = String(train.dir ?? "").trim();
+          const key = `${dirKey}:${dest}`;
+
+          const serviceEnd = getTrainTerminalAbs(train);
+          if(serviceEnd == null) continue;
+          const originDepartAbs = train.firstAbs ?? null;
+          if(lastTrainMode === "after_origin_hour"){
+            if(originDepartAbs == null) continue;
+            const originDepartSec = ((originDepartAbs % 86400) + 86400) % 86400;
+            if(originDepartSec < thresholdSec) continue;
+          }
+
+          if(!trainsByDest.has(key)) trainsByDest.set(key, []);
+          trainsByDest.get(key).push({
+            trainId: train.trainId,
+            serviceEnd,
+            departBase: originDepartAbs ?? -1,
+          });
+        }
+      }
+
+      const out = new Set();
+
+      for(const arr of trainsByDest.values()){
+        arr.sort((a,b)=> (a.serviceEnd - b.serviceEnd) || (a.departBase - b.departBase));
+        const last = arr[arr.length - 1];
+        if(last) out.add(last.trainId);
+      }
+
+      return out;
+    }
+
+    modalClose.addEventListener("click", closeAllModals);
+    modalBack.addEventListener("click", goBackModal);
+    settingsClose.addEventListener("click", closeAllModals);
+    stationTtBack.addEventListener("click", goBackModal);
+    stationTtClose.addEventListener("click", closeAllModals);
+    stationTtPrint.addEventListener("click", () => {
+      const content = `
+        <div class="modal-title">${stationTtTitle.querySelector(".main")?.outerHTML || stationTtTitle.innerHTML}</div>
+        ${stationTtModal.querySelector(".tt-body")?.outerHTML || ""}
+      `;
+      openPrintView(stationTtTitle.textContent.trim() || "駅時刻表", content);
+    });
+    depBoardClose.addEventListener("click", closeAllModals);
+    modalBackdrop.addEventListener("click", closeAllModals);
+    [modal, stationTtModal, depBoardModal, settingsModal].forEach(el=>{
+      el.addEventListener("click", (e)=>{
+        if(e.target === el) closeAllModals();
+      });
+    });
+    window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeAllModals(); });
+
+    document.getElementById("btnInfo").addEventListener("click", ()=>{
+      infoPanel.hidden = !infoPanel.hidden;
+    });
+
+    document.getElementById("btnHelp").addEventListener("click", ()=>{
+      location.href = "help.html";
+    });
+    btnEnterFullscreen.addEventListener("click", enterFullscreenMode);
+    btnExitFullscreen.addEventListener("click", exitFullscreenMode);
+    document.addEventListener("fullscreenchange", syncFullscreenButtons);
+
+    document.getElementById("btnClose").addEventListener("click", ()=>{
+      alert("（Webページのため閉じる操作は端末/ブラウザ側で行ってください）");
+    });
+
+    function openSettings(){
+      document.querySelectorAll('input[name="labelMode"]').forEach(r=>{
+        r.checked = (r.value === labelMode);
+      });
+      document.querySelectorAll('input[name="displayTimeVisibility"]').forEach(r=>{
+        r.checked = (r.value === displayTimeVisibility);
+      });
+      document.querySelectorAll('input[name="showPassStops"]').forEach(r=>{
+        r.checked = (r.value === showPassStopsMode);
+      });
+      document.querySelectorAll('input[name="lastTrainMode"]').forEach(r=>{
+        r.checked = (r.value === lastTrainMode);
+      });
+      const lastTrainHourSelect = document.getElementById("lastTrainStartHour");
+      if(lastTrainHourSelect) lastTrainHourSelect.value = String(lastTrainStartHour);
+
+      routeLinksEl.innerHTML = routeLinksFromConfig().map(x =>
+        `<a class="linkbtn" href="${escapeHtml(x.href)}">${escapeHtml(x.label)}</a>`
+      ).join("");
+
+      settingsModal.classList.add("show");
+      showBackdrop();
+    }
+
+    document.getElementById("btnGear").addEventListener("click", openSettings);
+
+    document.querySelectorAll('input[name="labelMode"]').forEach(r=>{
+      r.addEventListener("change", ()=>{
+        if(!r.checked) return;
+        labelMode = r.value;
+        saveLabelMode(labelMode);
+        labelOpenMap.clear();
+        tick();
+      });
+    });
+    document.querySelectorAll('input[name="displayTimeVisibility"]').forEach(r=>{
+      r.addEventListener("change", ()=>{
+        if(!r.checked) return;
+        displayTimeVisibility = r.value;
+        saveDisplayTimeVisibility(displayTimeVisibility);
+        applyDisplayTimeVisibility();
+      });
+    });
+    document.querySelectorAll('input[name="showPassStops"]').forEach(r=>{
+      r.addEventListener("change", ()=>{
+        if(!r.checked) return;
+        showPassStopsMode = r.value;
+        saveShowPassStopsMode(showPassStopsMode);
+        if(modal.classList.contains("show") && openedTrainId){
+          const train = findTrainById(openedTrainId);
+          if(train) openModalForTrain(train, openedTrainFocusStIdx, modalBackState);
+        }
+      });
+    });
+    document.querySelectorAll('input[name="lastTrainMode"]').forEach(r=>{
+      r.addEventListener("change", ()=>{
+        if(!r.checked) return;
+        lastTrainMode = r.value;
+        saveLastTrainMode(lastTrainMode);
+        lastTrainIdsByDest = computeLastTrainIdsByDestination(scheduleUp, scheduleDown);
+        if(modal.classList.contains("show") && openedTrainId){
+          const train = findTrainById(openedTrainId);
+          if(train) openModalForTrain(train, openedTrainFocusStIdx, modalBackState);
+        }
+        tick();
+      });
+    });
+    document.getElementById("lastTrainStartHour").addEventListener("change", (e)=>{
+      const v = Number(e.target.value);
+      if(!Number.isInteger(v) || v < 12 || v > 23) return;
+      lastTrainStartHour = v;
+      saveLastTrainStartHour(lastTrainStartHour);
+      lastTrainIdsByDest = computeLastTrainIdsByDestination(scheduleUp, scheduleDown);
+      if(modal.classList.contains("show") && openedTrainId){
+        const train = findTrainById(openedTrainId);
+        if(train) openModalForTrain(train, openedTrainFocusStIdx, modalBackState);
+      }
+      tick();
+    });
+    btnResetSettings.addEventListener("click", async ()=>{
+      await withLoadingOverlay(async ()=>{
+        localStorage.removeItem(LS_KEY_LABEL_MODE);
+        localStorage.removeItem(LS_KEY_DISPLAY_TIME_VISIBILITY);
+        localStorage.removeItem(LS_KEY_SHOW_PASS_STOPS);
+        localStorage.removeItem(LS_KEY_LAST_TRAIN_MODE);
+        localStorage.removeItem(LS_KEY_LAST_TRAIN_START_HOUR);
+        labelMode = loadLabelMode();
+        displayTimeVisibility = loadDisplayTimeVisibility();
+        showPassStopsMode = loadShowPassStopsMode();
+        lastTrainMode = loadLastTrainMode();
+        lastTrainStartHour = loadLastTrainStartHour();
+
+        document.querySelectorAll('input[name="labelMode"]').forEach(r=>{
+          r.checked = (r.value === labelMode);
+        });
+        document.querySelectorAll('input[name="displayTimeVisibility"]').forEach(r=>{
+          r.checked = (r.value === displayTimeVisibility);
+        });
+        document.querySelectorAll('input[name="showPassStops"]').forEach(r=>{
+          r.checked = (r.value === showPassStopsMode);
+        });
+        document.querySelectorAll('input[name="lastTrainMode"]').forEach(r=>{
+          r.checked = (r.value === lastTrainMode);
+        });
+        const lastTrainHourSelect = document.getElementById("lastTrainStartHour");
+        if(lastTrainHourSelect) lastTrainHourSelect.value = String(lastTrainStartHour);
+
+        labelOpenMap.clear();
+        applyDisplayTimeVisibility();
+        lastTrainIdsByDest = computeLastTrainIdsByDestination(scheduleUp, scheduleDown);
+        if(modal.classList.contains("show") && openedTrainId){
+          const train = findTrainById(openedTrainId);
+          if(train) openModalForTrain(train, openedTrainFocusStIdx, modalBackState);
+        }
+        tick();
+      }, 1000, "設定を初期化中です", "しばらくお待ちください");
+    });
+
+    document.querySelectorAll(".tbtn[data-shift]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const sec = Number(btn.dataset.shift);
+        displayOffsetSec += sec;
+        tick();
+      });
+    });
+    document.getElementById("btnNow").addEventListener("click", ()=>{
+      displayOffsetSec = 0;
+      tick();
+    });
+
+    let scheduleUp = null;
+    let scheduleDown = null;
+
+    function buildStationsUI(stations){
+      iaBranchLayout = null;
+      const reversed = [...stations].reverse();
+      const html = [];
+      for(const st of reversed){
+        html.push(`
+          <div class="station-row" data-stidx="${st.idx}">
+            <div class="st-left">
+              <button class="depbtn" type="button" data-role="depBoardBtn" title="発車標">
+                <span class="screen" aria-hidden="true"></span>
+              </button>
+              <div class="st-main">
+                <div class="st-code">${escapeHtml(st.code)}</div>
+                <button class="st-namebtn" type="button" data-role="stationName" title="${escapeHtml(st.name)}">${escapeHtml(st.name)}</button>
+                <div class="st-sub"> </div>
+              </div>
+            </div>
+            <div class="st-right"></div>
+          </div>
+        `);
+      }
+      stationsEl.innerHTML = html.join("");
+
+      stationsEl.querySelectorAll('[data-role="stationName"]').forEach(btn=>{
+        btn.addEventListener("click", (e)=>{
+          const row = e.target.closest(".station-row");
+          const idx = Number(row?.dataset?.stidx);
+          if(Number.isFinite(idx)) openStationTimetable(idx);
+        });
+      });
+      stationsEl.querySelectorAll('[data-role="depBoardBtn"]').forEach(btn=>{
+        btn.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          const row = e.target.closest(".station-row");
+          const idx = Number(row?.dataset?.stidx);
+          if(Number.isFinite(idx)) openDepartureBoard(idx);
+        });
+      });
+
+      lineWrap.querySelectorAll(".node").forEach(n => n.remove());
+      lineWrap.querySelectorAll(".branch-layer").forEach(n => n.remove());
+      lineWrap.querySelectorAll(".branch-ui-layer").forEach(n => n.remove());
+      const rows = lineWrap.querySelectorAll(".station-row");
+      for(const row of rows){
+        const idx = Number(row.dataset.stidx);
+        const node = document.createElement("div");
+        node.className = "node";
+        node.style.top = (row.offsetTop + row.offsetHeight/2) + "px";
+        node.dataset.stidx = idx;
+        lineWrap.appendChild(node);
+      }
+
+      buildIaBranchUI(stations);
+    }
+
+    function findTrainById(trainId){
+      return scheduleUp?.trains?.find(t => t.trainId === trainId)
+        ?? scheduleDown?.trains?.find(t => t.trainId === trainId)
+        ?? null;
+    }
+
+    function scrollToCenterInContainer(container, target){
+      if(!container || !target) return;
+      const cRect = container.getBoundingClientRect();
+      const tRect = target.getBoundingClientRect();
+      const current = container.scrollTop;
+      const delta = (tRect.top - cRect.top) + current;
+      const desired = delta - (container.clientHeight/2) + (target.clientHeight/2);
+      container.scrollTop = Math.max(0, desired);
+    }
+
+    function buildBranchSegmentHtml(x1, y1, x2, y2, color){
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      const deg = Math.atan2(dy, dx) * 180 / Math.PI;
+      return `<div class="branch-seg" style="left:${x1}px; top:${y1}px; width:${len}px; background:${color}; transform: translateY(-50%) rotate(${deg}deg);"></div>`;
+    }
+
+    function buildIaBranchUI(stations){
+      iaBranchLayout = null;
+
+      const anchorStation = stations.find(st => st.code === IA_BRANCH_CONFIG.anchorCode)
+        || stations.find(st => st.name === IA_BRANCH_CONFIG.anchorName);
+      if(!anchorStation) return;
+
+      const anchorRow = stationsEl.querySelector(`.station-row[data-stidx="${anchorStation.idx}"]`);
+      if(!anchorRow) return;
+
+      const x0 = lineWrap.clientWidth / 2;
+      const y0 = anchorRow.offsetTop + (anchorRow.offsetHeight / 2);
+      const points = [{ code: anchorStation.code, name: anchorStation.name, x: x0, y: y0 }];
+      let branchX = x0;
+
+      for(const st of IA_BRANCH_CONFIG.stations){
+        const mirrorStation = stations.find(x => x.code === st.mirrorCode) || null;
+        const mirrorRow = mirrorStation
+          ? stationsEl.querySelector(`.station-row[data-stidx="${mirrorStation.idx}"]`)
+          : null;
+        const y = mirrorRow
+          ? (mirrorRow.offsetTop + (mirrorRow.offsetHeight / 2))
+          : (y0 + (st.dy || 0));
+
+        points.push({
+          code: st.code,
+          name: st.name,
+          x: x0 + st.dx,
+          y,
+        });
+        branchX = Math.max(branchX, x0 + st.dx);
+      }
+
+      const html = [];
+      const uiHtml = [];
+      const endY = Math.max(...points.slice(1).map(p => p.y));
+      if(points.length > 1){
+        html.push(buildBranchSegmentHtml(x0, y0, branchX, y0, IA_LINE_COLOR));
+        html.push(buildBranchSegmentHtml(branchX, y0, branchX, endY, IA_LINE_COLOR));
+      }
+      for(let i=1;i<points.length;i++){
+        const p = points[i];
+        html.push(`<div class="branch-node" style="left:${p.x}px; top:${p.y}px;"></div>`);
+        uiHtml.push(`
+          <div class="branch-station-ui" style="top:${p.y}px;">
+            <button class="st-namebtn" type="button" data-role="branchStationName" data-stcode="${escapeHtml(p.code)}" data-stname="${escapeHtml(p.name)}" style="width:auto; max-width:150px; text-align:right;">
+              <span class="txt">
+                <span class="code">${escapeHtml(p.code)}</span>
+                <span class="name">${escapeHtml(p.name)}</span>
+              </span>
+            </button>
+            <button class="depbtn branch-depbtn" type="button" data-role="branchDepBtn" data-stcode="${escapeHtml(p.code)}" data-stname="${escapeHtml(p.name)}" title="発車標">
+              <span class="screen" aria-hidden="true"></span>
+            </button>
+          </div>
+        `);
+      }
+
+      let layer = lineWrap.querySelector(".branch-layer");
+      if(!layer){
+        layer = document.createElement("div");
+        layer.className = "branch-layer";
+        lineWrap.appendChild(layer);
+      }
+      layer.innerHTML = html.join("");
+
+      let uiLayer = lineWrap.querySelector(".branch-ui-layer");
+      if(!uiLayer){
+        uiLayer = document.createElement("div");
+        uiLayer.className = "branch-ui-layer";
+        lineWrap.appendChild(uiLayer);
+      }
+      uiLayer.innerHTML = uiHtml.join("");
+      uiLayer.querySelectorAll('[data-role="branchStationName"]').forEach(btn=>{
+        btn.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          openStationTimetable({
+            code: String(btn.dataset.stcode ?? ""),
+            name: String(btn.dataset.stname ?? ""),
+          });
+        });
+      });
+      uiLayer.querySelectorAll('[data-role="branchDepBtn"]').forEach(btn=>{
+        btn.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          openDepartureBoard({
+            code: String(btn.dataset.stcode ?? ""),
+            name: String(btn.dataset.stname ?? ""),
+          });
+        });
+      });
+
+      iaBranchLayout = {
+        anchorIdx: anchorStation.idx,
+        branchX,
+        pointsByCode: new Map(points.map(p => [p.code, p])),
+        pointsByName: new Map(points.map(p => [p.name, p])),
+      };
+    }
+
+    function getIaBranchPoint(stop){
+      if(!iaBranchLayout || !stop) return null;
+      return iaBranchLayout.pointsByCode.get(stop.code) || iaBranchLayout.pointsByName.get(stop.stationName) || null;
+    }
+
+    function getIaBranchTerminalPoint(ref){
+      if(!iaBranchLayout || !ref) return null;
+      const code = String(ref.code ?? "").trim();
+      const name = String(ref.name ?? ref.stationName ?? "").trim();
+      if(code && code !== IA_BRANCH_CONFIG.anchorCode){
+        const byCode = iaBranchLayout.pointsByCode.get(code);
+        if(byCode) return byCode;
+      }
+      if(name && name !== IA_BRANCH_CONFIG.anchorName){
+        const byName = iaBranchLayout.pointsByName.get(name);
+        if(byName) return byName;
+      }
+      return null;
+    }
+
+    function isIABranchStop(stop){
+      return !!getIaBranchPoint(stop);
+    }
+
+    function isActualIABranchStop(stop){
+      if(!stop) return false;
+      const code = String(stop.code ?? "").trim();
+      const name = String(stop.stationName ?? "").trim();
+      if(code === IA_BRANCH_CONFIG.anchorCode || name === IA_BRANCH_CONFIG.anchorName) return false;
+      return !!getIaBranchPoint(stop);
+    }
+
+    function getStopLineColor(stop){
+      if(!stop) return LINE_COLOR;
+      if(isActualIABranchStop(stop)) return IA_LINE_COLOR;
+
+      const code = String(stop.code ?? "").trim();
+      for(const item of EXTRA_LINE_COLORS){
+        if(item.prefix && code.startsWith(item.prefix)) return item.color;
+      }
+      return LINE_COLOR;
+    }
+
+    function interpolateIaBranchPath(pointA, pointB, frac){
+      if(!pointA || !pointB || !iaBranchLayout) return null;
+      const x0 = iaBranchLayout.branchX;
+      const anchorY = iaBranchLayout.pointsByCode.get(IA_BRANCH_CONFIG.anchorCode)?.y ?? pointA.y;
+
+      const aIsAnchor = pointA.code === IA_BRANCH_CONFIG.anchorCode;
+      const bIsAnchor = pointB.code === IA_BRANCH_CONFIG.anchorCode;
+
+      if(aIsAnchor && !bIsAnchor){
+        return {
+          x: x0,
+          y: anchorY + (pointB.y - anchorY) * frac,
+        };
+      }
+
+      if(!aIsAnchor && bIsAnchor){
+        const rev = interpolateIaBranchPath(pointB, pointA, 1 - frac);
+        return rev ? { x: rev.x, y: rev.y } : null;
+      }
+
+      return {
+        x: x0,
+        y: pointA.y + (pointB.y - pointA.y) * frac,
+      };
+    }
+
+    function calcIABranchPosition(train, nowAbs){
+      if(!iaBranchLayout) return null;
+      const displayStops = train.displayStops || [];
+      const branchStops = displayStops.filter(s => getIaBranchPoint(s));
+      const hasActualBranchStops = displayStops.some(isActualIABranchStop);
+      const anchorPoint = iaBranchLayout.pointsByCode.get(IA_BRANCH_CONFIG.anchorCode)
+        || iaBranchLayout.pointsByName.get(IA_BRANCH_CONFIG.anchorName)
+        || null;
+      const branchOriginPoint = getIaBranchTerminalPoint({ name: train.origin });
+      const branchDestPoint = getIaBranchTerminalPoint({ name: train.dest });
+
+      if(!hasActualBranchStops && anchorPoint){
+        if(branchOriginPoint && train.firstAbs != null){
+          const synthStartAbs = (train.serviceStartAbs != null)
+            ? train.serviceStartAbs
+            : Math.max(0, train.firstAbs - IA_BRANCH_FALLBACK_TRAVEL_SEC);
+          if(nowAbs >= synthStartAbs && nowAbs < train.firstAbs){
+            const span = Math.max(1, train.firstAbs - synthStartAbs);
+            const frac = Math.max(0, Math.min(1, (nowAbs - synthStartAbs) / span));
+            const pos = interpolateIaBranchPath(branchOriginPoint, anchorPoint, frac);
+            if(pos){
+              return {
+                x: pos.x,
+                y: pos.y,
+                stopped: frac <= 0.0001,
+                atStationIdx: frac <= 0.0001 ? (branchOriginPoint.code ?? null) : null,
+              };
+            }
+          }
+        }
+
+        if(branchDestPoint && train.lastAbs != null){
+          const synthEndAbs = (train.serviceEndAbs != null)
+            ? train.serviceEndAbs
+            : (train.lastAbs + IA_BRANCH_FALLBACK_TRAVEL_SEC);
+          if(nowAbs >= train.lastAbs && nowAbs <= synthEndAbs){
+            const span = Math.max(1, synthEndAbs - train.lastAbs);
+            const frac = Math.max(0, Math.min(1, (nowAbs - train.lastAbs) / span));
+            const pos = interpolateIaBranchPath(anchorPoint, branchDestPoint, frac);
+            if(pos){
+              return {
+                x: pos.x,
+                y: pos.y,
+                stopped: frac >= 0.9999,
+                atStationIdx: frac >= 0.9999 ? (branchDestPoint.code ?? null) : null,
+              };
+            }
+          }
+        }
+
+        return null;
+      }
+
+      for(const s of branchStops){
+        const point = getIaBranchPoint(s);
+        if(!point) continue;
+
+        if(s.arrAbs != null && s.depAbs != null && nowAbs >= s.arrAbs && nowAbs < s.depAbs){
+          return { x: point.x, y: point.y, stopped: true, atStationIdx: s.stationIdx ?? point.code };
+        }
+        if(s.arrAbs == null && s.depAbs != null){
+          const stopStart = s.depAbs - 20;
+          if(nowAbs >= stopStart && nowAbs <= s.depAbs){
+            return { x: point.x, y: point.y, stopped: true, atStationIdx: s.stationIdx ?? point.code };
+          }
+        }
+      }
+
+      if(train.serviceStartAbs != null && train.firstAbs != null && nowAbs >= train.serviceStartAbs && nowAbs < train.firstAbs){
+        const firstDisplay = displayStops[0];
+        const point = getIaBranchPoint(firstDisplay);
+        if(point) return { x: point.x, y: point.y, stopped: true, atStationIdx: firstDisplay.stationIdx ?? point.code };
+      }
+      if(train.serviceEndAbs != null && train.lastAbs != null && nowAbs > train.lastAbs && nowAbs <= train.serviceEndAbs){
+        const lastDisplay = displayStops[displayStops.length - 1];
+        const point = getIaBranchPoint(lastDisplay);
+        if(point) return { x: point.x, y: point.y, stopped: true, atStationIdx: lastDisplay.stationIdx ?? point.code };
+      }
+
+      for(let i=0;i<displayStops.length-1;i++){
+        const a = displayStops[i];
+        const b = displayStops[i+1];
+        const pa = getIaBranchPoint(a);
+        const pb = getIaBranchPoint(b);
+        if(!pa || !pb) continue;
+
+        const t0 = (a.depAbs ?? a.arrAbs ?? a.passAbs);
+        const t1 = (b.arrAbs ?? b.depAbs ?? b.passAbs);
+        if(t0 == null || t1 == null || t1 <= t0) continue;
+        if(nowAbs < t0 || nowAbs >= t1) continue;
+
+        const frac = (nowAbs - t0) / (t1 - t0);
+        const pos = interpolateIaBranchPath(pa, pb, frac);
+        if(!pos) return null;
+        return {
+          x: pos.x,
+          y: pos.y,
+          stopped: false,
+          atStationIdx: null,
+        };
+      }
+
+      return null;
+    }
+
+    function buildModalStopYList(){
+      const wrap = modalBody.querySelector(".train-tt-wrap");
+      if(!wrap) return null;
+      const table = wrap.querySelector("table");
+      if(!table) return null;
+
+      const wrapRect = wrap.getBoundingClientRect();
+      const list = [];
+      let railX = null;
+
+      const posCell = wrap.querySelector("thead .tt-poscol, tbody .tt-poscol");
+      if(posCell){
+        const cellRect = posCell.getBoundingClientRect();
+        railX = (cellRect.left - wrapRect.left) + (cellRect.width / 2);
+      }
+
+      wrap.querySelectorAll('tbody tr[data-order]').forEach(tr=>{
+        const idx = Number(tr.dataset.order);
+        if(!Number.isFinite(idx)) return;
+        const r = tr.getBoundingClientRect();
+        const centerY = (r.top - wrapRect.top) + (r.height/2);
+        list.push({ idx, y: centerY });
+      });
+
+      list.sort((a,b)=>a.idx-b.idx);
+      return { wrap, list, railX };
+    }
+
+    function getModalVisibleStops(train){
+      const baseStops = (train.displayStops?.length ? train.displayStops : train.stops) || [];
+      return baseStops.filter(s => {
+        const isPassOnly = (s.passAbs != null && s.arrAbs == null && s.depAbs == null);
+        return !(isPassOnly && showPassStopsMode === "hide");
+      });
+    }
+
+    function getModalTimelineStops(train){
+      const visibleStops = getModalVisibleStops(train);
+      const out = [...visibleStops];
+      const last = out[out.length - 1] || null;
+      const destName = String(train?.dest ?? "").trim();
+
+      const shouldAppendTerminal =
+        !!destName &&
+        !Number.isFinite(train?.serviceEndStationIdx) &&
+        train?.serviceEndAbs != null &&
+        train?.lastAbs != null &&
+        train.serviceEndAbs > train.lastAbs &&
+        (!last || String(last.stationName ?? "").trim() !== destName);
+
+      if(shouldAppendTerminal){
+        out.push({
+          stationIdx: null,
+          stationName: destName,
+          code: "",
+          track: "",
+          arrSec: null,
+          depSec: null,
+          passSec: null,
+          arrAbs: train.serviceEndAbs,
+          depAbs: null,
+          passAbs: null,
+          syntheticTerminal: true,
+        });
+      }
+
+      return out;
+    }
+
+    function calcTrainModalDisplayPosition(train, nowAbs){
+      const visibleStops = getModalTimelineStops(train);
+      if(!visibleStops.length) return { status:"not_in_service", rowPos:null };
+
+      for(let i=0;i<visibleStops.length;i++){
+        const s = visibleStops[i];
+        if(s.arrAbs != null && s.depAbs != null){
+          if(nowAbs >= s.arrAbs && nowAbs < s.depAbs){
+            return { status:"stopped", rowPos:i, stopOrder:i };
+          }
+        }
+        if(s.arrAbs != null && s.depAbs == null && nowAbs >= s.arrAbs){
+          if(s.syntheticTerminal){
+            const terminalLimit = train.serviceEndAbs ?? s.arrAbs;
+            if(nowAbs > terminalLimit){
+              continue;
+            }
+          }
+          return { status:"stopped", rowPos:i, stopOrder:i };
+        }
+        if(s.arrAbs == null && s.depAbs != null){
+          const stopStart = s.depAbs - 20;
+          if(nowAbs >= stopStart && nowAbs <= s.depAbs){
+            return { status:"stopped", rowPos:i, stopOrder:i };
+          }
+        }
+      }
+
+      if(train.serviceStartAbs != null && train.firstAbs != null && nowAbs >= train.serviceStartAbs && nowAbs < train.firstAbs){
+        return { status:"stopped", rowPos:0, stopOrder:0 };
+      }
+      if(train.serviceEndAbs != null && train.lastAbs != null && nowAbs > train.lastAbs && nowAbs <= train.serviceEndAbs){
+        if(!Number.isFinite(train.serviceEndStationIdx)){
+          // Synthetic terminal row handles the interpolation / arrival in this case.
+        }else{
+          const lastOrder = visibleStops.length - 1;
+          return { status:"stopped", rowPos:lastOrder, stopOrder:lastOrder };
+        }
+      }
+
+      for(let i=0;i<visibleStops.length-1;i++){
+        const a = visibleStops[i];
+        const b = visibleStops[i+1];
+        const t0 = (a.depAbs ?? a.arrAbs ?? a.passAbs);
+        const t1 = (b.arrAbs ?? b.depAbs ?? b.passAbs);
+        if(t0 == null || t1 == null || t1 <= t0) continue;
+        if(nowAbs >= t0 && nowAbs < t1){
+          const frac = (nowAbs - t0) / (t1 - t0);
+          return { status:"running", rowPos: i + frac };
+        }
+      }
+
+      if(train.lastAbs != null && nowAbs > train.lastAbs && !Number.isFinite(train.serviceEndStationIdx)){
+        return { status:"not_in_service", rowPos:null };
+      }
+
+      return { status:"not_in_service", rowPos:null };
+    }
+
+    function buildTrainModalRailGradient(train, yList, railTop, railHeight){
+      const visibleStops = getModalTimelineStops(train);
+      if(!visibleStops.length || !yList?.length || railHeight <= 0) return LINE_COLOR;
+
+      const clamp01 = (v) => Math.max(0, Math.min(1, v));
+      const pct = (y) => `${(clamp01((y - railTop) / railHeight) * 100).toFixed(2)}%`;
+      if(visibleStops.length === 1){
+        return getStopLineColor(visibleStops[0]);
+      }
+
+      const anchorIndex = visibleStops.findIndex(s => String(s.code ?? "").trim() === IA_BRANCH_CONFIG.anchorCode || String(s.stationName ?? "").trim() === IA_BRANCH_CONFIG.anchorName);
+      const branchIndexes = visibleStops
+        .map((s, i) => isActualIABranchStop(s) ? i : -1)
+        .filter(i => i >= 0);
+      const hasBranchAbove = anchorIndex >= 0 && branchIndexes.some(i => i < anchorIndex);
+      const hasBranchBelow = anchorIndex >= 0 && branchIndexes.some(i => i > anchorIndex);
+
+      const colorStops = [];
+      const pushBand = (color, startY, endY) => {
+        if(endY <= startY) return;
+        colorStops.push(`${color} ${pct(startY)}`);
+        colorStops.push(`${color} ${pct(endY)}`);
+      };
+
+      pushBand(getStopLineColor(visibleStops[0]), railTop, yList[0].y);
+
+      for(let i=0;i<visibleStops.length-1;i++){
+        const startY = yList[i]?.y;
+        const endY = yList[i+1]?.y;
+        if(startY == null || endY == null) continue;
+
+        let color = getStopLineColor(visibleStops[i]);
+        if(i === anchorIndex && hasBranchBelow && !hasBranchAbove){
+          color = IA_LINE_COLOR;
+        }
+        pushBand(color, startY, endY);
+      }
+
+      pushBand(getStopLineColor(visibleStops[visibleStops.length - 1]), yList[visibleStops.length - 1].y, railTop + railHeight);
+
+      return colorStops.length ? `linear-gradient(to bottom, ${colorStops.join(", ")})` : LINE_COLOR;
+    }
+
+    function interpolateYFromIdxFloat(idxFloat, yList){
+      if(!yList?.length) return null;
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+      const minIdx = yList[0].idx;
+      const maxIdx = yList[yList.length-1].idx;
+      const x = clamp(idxFloat, minIdx, maxIdx);
+
+      const rounded = Math.round(x);
+      const exact = yList.find(p => p.idx === rounded && Math.abs(x-rounded) < 1e-6);
+      if(exact) return exact.y;
+
+      let left = null;
+      let right = null;
+
+      for(let i=0;i<yList.length;i++){
+        const p = yList[i];
+        if(p.idx <= x) left = p;
+        if(p.idx >= x){ right = p; break; }
+      }
+      if(!left) left = yList[0];
+      if(!right) right = yList[yList.length-1];
+
+      if(left.idx === right.idx) return left.y;
+
+      const frac = (x - left.idx) / (right.idx - left.idx);
+      return left.y + (right.y - left.y) * frac;
+    }
+
+    function updateTrainModalRailPosition(){
+      if(!modal.classList.contains("show")) return;
+      if(!openedTrainId) return;
+
+      const train = findTrainById(openedTrainId);
+      if(!train) return;
+
+      const disp = getDisplayDate();
+      const baseSec = disp.getHours()*3600 + disp.getMinutes()*60 + disp.getSeconds();
+      const nowAbs = (CUTOVER_SEC > 0 && baseSec <= CUTOVER_SEC) ? baseSec + 86400 : baseSec;
+
+      const p = calcTrainModalDisplayPosition(train, nowAbs);
+      const wrapInfo = buildModalStopYList();
+      if(!wrapInfo) return;
+
+      const wrap = wrapInfo.wrap;
+      const yList = wrapInfo.list;
+      const railX = wrapInfo.railX;
+
+      const rail = wrap.querySelector('[data-role="ttRail"]');
+      const icon = wrap.querySelector('[data-role="ttIcon"]');
+      const dot  = wrap.querySelector('[data-role="ttDot"]');
+      if(!rail || !icon || !dot) return;
+      if(railX != null){
+        rail.style.left = `${railX}px`;
+        icon.style.left = `${railX}px`;
+        dot.style.left = `${railX}px`;
+      }
+
+      const tbody = wrap.querySelector("tbody");
+      if(tbody){
+        const wRect = wrap.getBoundingClientRect();
+        const bRect = tbody.getBoundingClientRect();
+        const top = (bRect.top - wRect.top) + 6;
+        const bottom = (wRect.bottom - bRect.bottom) + 6;
+        rail.style.top = `${Math.max(10, top)}px`;
+        rail.style.bottom = `${Math.max(10, bottom)}px`;
+        const railTop = Math.max(10, top);
+        const railBottom = Math.max(10, bottom);
+        const railHeight = Math.max(1, wrap.clientHeight - railTop - railBottom);
+        rail.style.background = buildTrainModalRailGradient(train, yList, railTop, railHeight);
+      }
+
+      const tColor = typeColor(train.type);
+      icon.style.setProperty("--c", tColor);
+
+      if(p.status === "not_in_service" || p.rowPos == null){
+        icon.classList.remove("show");
+        dot.classList.remove("show");
+        return;
+      }
+
+      const y = interpolateYFromIdxFloat(p.rowPos, yList);
+      if(y == null){
+        icon.classList.remove("show");
+        dot.classList.remove("show");
+        return;
+      }
+
+      if(p.status === "stopped" && Number.isFinite(p.stopOrder)){
+        const yStop = interpolateYFromIdxFloat(p.stopOrder, yList) ?? y;
+        dot.style.top = `${yStop}px`;
+        dot.classList.add("show");
+      }else{
+        dot.classList.remove("show");
+      }
+
+      icon.style.top = `${y}px`;
+      icon.classList.add("show");
+    }
+
+    function getCurrentFocusStationIdxForTrain(train){
+      if(!train) return null;
+
+      const disp = getDisplayDate();
+      const baseSec = disp.getHours()*3600 + disp.getMinutes()*60 + disp.getSeconds();
+      const nowAbs = (CUTOVER_SEC > 0 && baseSec <= CUTOVER_SEC) ? baseSec + 86400 : baseSec;
+      const p = calcTrainPosition(train, nowAbs);
+
+      if(p.status === "stopped" && Number.isFinite(p.atStationIdx)){
+        return p.atStationIdx;
+      }
+      if(p.y01 != null){
+        const nearestIdx = Math.round(p.y01 * (STATION_COUNT - 1));
+        if(Number.isFinite(nearestIdx)) return nearestIdx;
+      }
+
+      const fallbackIdx = train.stops?.[0]?.stationIdx;
+      return Number.isFinite(fallbackIdx) ? fallbackIdx : null;
+    }
+
+    function openModalForTrain(train, focusStationIdx = null, backState = null){
+      const dirText = (train.dir === "up") ? "上り" : "下り";
+      const nameText = train.name ? ` / ${train.name}` : "";
+      const baseName = (train.name ?? "").trim();
+      const nagiOK = (baseName.includes("あさなぎ") || baseName.includes("ゆうなぎ"));
+
+      const z = (train.zPart ?? "").trim();
+      const y = (train.yPart ?? "").trim();
+
+      const zIsTypeLike = !!TYPE_COLOR[z];
+      const zyText = (nagiOK && z && !zIsTypeLike) ? ` ${z}${y}` : "";
+
+      const carsText = (train.cars && String(train.cars).trim())
+        ? `　${String(train.cars).trim()}両`
+        : "";
+
+      const trainNoLabel = train.trainNo ? train.trainNo : "ー";
+
+      const tColor = typeColor(train.type);
+      const tText  = idealTextColor(tColor);
+
+      const destFallback =
+        (train.dest && train.dest.trim()) ? train.dest.trim()
+        : (train.stops?.length ? train.stops[train.stops.length - 1].stationName : "—");
+
+      const originFallback =
+        (train.origin && train.origin.trim()) ? train.origin.trim()
+        : (train.stops?.length ? train.stops[0].stationName : "—");
+
+      const subLine = `${destFallback} 行き　始発駅：${originFallback}`;
+      const trainLabelText = `${trainNoLabel}列車`;
+      const dirLongText = (train.dir === "up") ? "上り方面" : "下り方面";
+      const modalLastTrainNote = lastTrainIdsByDest.has(train.trainId)
+        ? `${destFallback} 行き 終電`
+        : "";
+
+      modalTitle.innerHTML = `
+        <div class="main">
+          <span class="type" style="background:${escapeHtml(tColor)}; border-color:${escapeHtml(tColor)}; color:${escapeHtml(tText)};">
+            ${escapeHtml(train.type || "種別")}
+          </span>
+          <span>${escapeHtml(nameText.replace(/^ \/ /, ""))}${escapeHtml(zyText)}${escapeHtml(carsText)}</span>
+          ${modalLastTrainNote ? `<span class="modal-last-train">${escapeHtml(modalLastTrainNote)}</span>` : ""}
+        </div>
+        <div class="sub modal-subline">
+          <span>（${escapeHtml(dirLongText)}）</span>
+          <span>${escapeHtml(subLine)}</span>
+          <span>${escapeHtml(trainLabelText)}</span>
+        </div>
+      `;
+
+      const rows = [];
+      rows.push(`
+        <div class="train-tt-wrap">
+          <div class="train-tt-rail" data-role="ttRail" aria-hidden="true"></div>
+          <div class="train-tt-dot" data-role="ttDot" aria-hidden="true"></div>
+          <div class="train-tt-icon" data-role="ttIcon" aria-hidden="true"></div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>駅</th>
+                <th class="tt-poscol" aria-hidden="true"></th>
+                <th style="width:92px;">番線</th>
+                <th style="width:90px;">着</th>
+                <th style="width:90px;">発</th>
+              </tr>
+            </thead>
+            <tbody>
+      `);
+
+      const modalStops = getModalTimelineStops(train);
+      for(let i=0;i<modalStops.length;i++){
+        const s = modalStops[i];
+        const isLast = (i === modalStops.length - 1);
+        const arrText = (s.arrAbs != null) ? secToHHMM(s.arrAbs) : "";
+
+        let depCell = "";
+        if(!isLast){
+          if(s.depAbs != null){
+            depCell = escapeHtml(secToHHMM(s.depAbs));
+          }else if(s.passAbs != null){
+            depCell = `${escapeHtml(secToHHMM(s.passAbs))}<br><span class="passnote">(通過)</span>`;
+          }
+        }
+
+        const hasStopTime = (s.arrAbs != null || s.depAbs != null);
+        const trackCell = (hasStopTime && s.track) ? escapeHtml(s.track) : "";
+
+        const rowAttr = `${Number.isFinite(s.stationIdx) ? ` data-stidx="${s.stationIdx}"` : ""} data-order="${i}"`;
+        const canOpenStation = Number.isFinite(s.stationIdx) || !!String(s.code ?? "").trim();
+        const nameCell = canOpenStation
+          ? `<button class="name namebtn" type="button" data-role="trainTtStationName"
+              ${Number.isFinite(s.stationIdx) ? `data-stidx="${s.stationIdx}"` : ""}
+              data-stcode="${escapeHtml(s.code)}"
+              data-stname="${escapeHtml(s.stationName)}"
+              title="${escapeHtml(s.stationName)}">${escapeHtml(s.stationName)}</button>`
+          : `<span class="name" title="${escapeHtml(s.stationName)}">${escapeHtml(s.stationName)}</span>`;
+
+        rows.push(`
+          <tr${rowAttr}>
+            <td>
+              <div class="stcell">
+                <div>
+                  <div class="code">${escapeHtml(s.code)}</div>
+                  ${nameCell}
+                </div>
+              </div>
+            </td>
+            <td class="tt-poscol" aria-hidden="true"></td>
+            <td>${trackCell}</td>
+            <td>${escapeHtml(arrText)}</td>
+            <td>${depCell}</td>
+          </tr>
+        `);
+      }
+
+      // ★備考：末尾が ? のときだけ中身を表示し、それ以外は「ー」
+      const rawRemark = String(train.remark ?? "").trim();
+      const showRemarkText = rawRemark.endsWith("?");
+      const remarkText = showRemarkText
+        ? rawRemark.slice(0, -1).trim()
+        : "";
+      const remarkDisplay = remarkText || "ー";
+
+      rows.push(`</tbody></table>`);
+      rows.push(`
+        <div class="tt-remark" aria-label="備考">
+          <div class="h">備考</div>
+          <div class="t">${escapeHtml(remarkDisplay)}</div>
+        </div>
+      `);
+
+      rows.push(`</div>`); // train-tt-wrap を閉じる
+		  
+		  
+      modalBody.innerHTML = rows.join("");
+
+      settingsModal.classList.remove("show");
+      stationTtModal.classList.remove("show");
+      modal.classList.add("show");
+      showBackdrop();
+
+      openedTrainId = train.trainId;
+      openedTrainFocusStIdx = Number.isFinite(focusStationIdx)
+        ? focusStationIdx
+        : getCurrentFocusStationIdxForTrain(train);
+      modalBackState = backState;
+      modalBack.hidden = !backState;
+      stationTtBack.hidden = true;
+
+      requestAnimationFrame(()=>{
+        updateTrainModalRailPosition();
+        if(Number.isFinite(openedTrainFocusStIdx)){
+          const tr = modalBody.querySelector(`tr[data-stidx="${openedTrainFocusStIdx}"]`);
+          if(tr) scrollToCenterInContainer(trainModalCard, tr);
+        }
+      });
+
+      modalBody.querySelectorAll('[data-role="trainTtStationName"]').forEach(btn=>{
+        btn.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          const stIdx = readStationIdxValue(btn.dataset.stidx);
+          const stationRef = {
+            stationIdx: Number.isFinite(stIdx) ? stIdx : null,
+            code: String(btn.dataset.stcode ?? ""),
+            name: String(btn.dataset.stname ?? ""),
+          };
+          openStationTimetable(stationRef, {
+            type: "train",
+            trainId: train.trainId,
+            focusStationIdx: Number.isFinite(stIdx) ? stIdx : null,
+          });
+        });
+      });
+    }
+
+    function buildStationYMap(){
+      const rows = lineWrap.querySelectorAll(".station-row");
+      const map = new Map();
+      for(const row of rows){
+        const idx = Number(row.dataset.stidx);
+        map.set(idx, row.offsetTop + row.offsetHeight/2);
+      }
+      return map;
+    }
+
+    function assignLanes(trainPoints, baseOffsets, yThresholdPx){
+      const pts = [...trainPoints].sort((a,b)=>a.yPx-b.yPx);
+      const lanes = [];
+      for(const p of pts){
+        let laneIndex = -1;
+        for(let i=0;i<lanes.length;i++){
+          if(Math.abs(p.yPx - lanes[i]) > yThresholdPx){
+            laneIndex = i;
+            break;
+          }
+        }
+        if(laneIndex === -1){
+          laneIndex = lanes.length;
+          lanes.push(-1e9);
+        }
+        lanes[laneIndex] = p.yPx;
+        p.laneIndex = laneIndex;
+
+        const step = (baseOffsets.length >= 2) ? (baseOffsets[1] - baseOffsets[0]) : 50;
+        p.offsetPx = baseOffsets[laneIndex] ?? (baseOffsets[baseOffsets.length-1] + (laneIndex - (baseOffsets.length-1)) * step);
+
+        const k = Math.floor((laneIndex + 1) / 2);
+        const sign = (laneIndex % 2 === 1) ? 1 : -1;
+        p.yJitter = (laneIndex === 0) ? 0 : Math.min(24, 8 * k) * sign;
+      }
+      return pts;
+    }
+
+    function renderTrains(displayDate){
+      if(!scheduleUp || !scheduleDown) return;
+
+      const baseSec = displayDate.getHours()*3600 + displayDate.getMinutes()*60 + displayDate.getSeconds();
+      const nowAbs = (CUTOVER_SEC > 0 && baseSec <= CUTOVER_SEC) ? baseSec + 86400 : baseSec;
+
+      const yMap = buildStationYMap();
+      const yFromY01 = (y01) => {
+        const idxFloat = y01 * (STATION_COUNT - 1);
+        const idx0 = Math.floor(idxFloat);
+        const idx1 = Math.min(STATION_COUNT-1, idx0+1);
+        const frac = idxFloat - idx0;
+
+        const y0 = yMap.get(idx0);
+        const y1 = yMap.get(idx1);
+        if(y0 == null || y1 == null) return null;
+        return y0 + (y1 - y0) * frac;
+      };
+
+      const upPts = [];
+      const downPts = [];
+      const branchPts = [];
+
+      const collect = (train) => {
+        const hasMainlineStops = !!(train.stops && train.stops.length);
+        const hasBranchStops = !!(train.displayStops && train.displayStops.some(s => isActualIABranchStop(s)));
+        if(!hasMainlineStops && !hasBranchStops) return;
+
+        const branchPos = calcIABranchPosition(train, nowAbs);
+        if(branchPos){
+          const destLabel = trainDestFallback(train);
+          const color = typeColor(train.type);
+          const textColor = idealTextColor(color);
+          const sideClass = (train.dir === "up") ? "left" : "right";
+          branchPts.push({
+            train,
+            xPx: branchPos.x,
+            yPx: branchPos.y,
+            rot: (train.dir === "up") ? 0 : 180,
+            sideClass,
+            stopped: branchPos.stopped,
+            atStationIdx: branchPos.atStationIdx,
+            nameLine: train.dest ? `${train.dest} 行` : (train.name ? train.name : ""),
+            lastTrainNote: (lastTrainIdsByDest.has(train.trainId) && destLabel) ? `${destLabel} 行き 終電` : "",
+            trainNoLabel: train.trainNo ? train.trainNo : "ー",
+            color,
+            textColor
+          });
+          return;
+        }
+
+        const p = calcTrainPosition(train, nowAbs);
+        if(p.status === "not_in_service" || p.y01 == null) return;
+
+        const yInWrap = yFromY01(p.y01);
+        if(yInWrap == null) return;
+
+        const rot = (train.dir === "up") ? 0 : 180;
+        const nameLine = train.dest ? `${train.dest} 行` : (train.name ? train.name : "");
+        const destLabel = trainDestFallback(train);
+        const trainNoLabel = train.trainNo ? train.trainNo : "ー";
+        const lastTrainNote = (lastTrainIdsByDest.has(train.trainId) && destLabel)
+          ? `${destLabel} 行き 終電`
+          : "";
+
+        const color = typeColor(train.type);
+        const textColor = idealTextColor(color);
+
+        const item = {
+          train,
+          yPx: yInWrap,
+          rot,
+          stopped: (p.status === "stopped"),
+          atStationIdx: (p.status === "stopped") ? p.atStationIdx : null,
+          nameLine,
+          lastTrainNote,
+          trainNoLabel,
+          color,
+          textColor
+        };
+
+        if(train.dir === "up") upPts.push(item);
+        else downPts.push(item);
+      };
+
+      for(const t of scheduleUp.trains) collect(t);
+      for(const t of scheduleDown.trains) collect(t);
+
+      const upOffsetsBase   = [-35, -57, -80, -102, -125, -147];
+      const downOffsetsBase = [  35,  57,  80,  102,  125,  147];
+      const yThreshold = 60;
+
+      const upAssigned = assignLanes(upPts, upOffsetsBase, yThreshold);
+      const downAssigned = assignLanes(downPts, downOffsetsBase, yThreshold);
+
+      function markStoppedStackFixed(list, side){
+        const groups = new Map();
+        for(const it of list){
+          it.stopRank = 0;
+          if(!it.stopped || it.atStationIdx == null) continue;
+
+          const key = `${side}:${it.atStationIdx}`;
+          if(!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(it);
+        }
+
+        for(const [key, arr] of groups){
+          const order = stopStackMap.get(key) ? [...stopStackMap.get(key)] : [];
+          const nowIds = new Set(arr.map(it => it.train.trainId));
+          const pruned = order.filter(id => nowIds.has(id));
+
+          const newcomers = arr
+            .map(it => it.train.trainId)
+            .filter(id => !pruned.includes(id))
+            .sort((a,b)=>String(a).localeCompare(String(b), "ja"));
+
+          const newOrder = pruned.concat(newcomers);
+          stopStackMap.set(key, newOrder);
+
+          const idxMap = new Map(newOrder.map((id,i)=>[id,i]));
+          for(const it of arr){
+            it.stopRank = idxMap.get(it.train.trainId) ?? 0;
+          }
+        }
+
+        for(const k of [...stopStackMap.keys()]){
+          if(!k.startsWith(side + ":")) continue;
+          if(!groups.has(k)) stopStackMap.delete(k);
+        }
+      }
+
+      markStoppedStackFixed(upAssigned, "up");
+      markStoppedStackFixed(downAssigned, "down");
+      markStoppedStackFixed(branchPts.filter(it => it.sideClass === "left"), "branch-left");
+      markStoppedStackFixed(branchPts.filter(it => it.sideClass === "right"), "branch-right");
+
+      const nodes = [];
+      const addNode = (it, sideClass) => {
+        const train = it.train;
+        const stoppedTag = it.stopped ? `<div class="stopped-tag">停車中</div>` : "";
+
+        const labelHidden =
+          (labelMode === "toggle" && !labelOpenMap.get(train.trainId)) ? "hidden" : "";
+
+        const STEP_OUT = (window.matchMedia("(max-width: 900px)").matches) ? 60 : 100;
+        const extra = (it.stopped && it.stopRank > 0) ? (it.stopRank * STEP_OUT) : 0;
+        const sign = (sideClass === "left") ? -1 : 1;
+        const finalOffset = it.offsetPx + sign * extra;
+
+        nodes.push(`
+          <div class="train ${sideClass}" data-trainid="${escapeHtml(train.trainId)}"
+               style="top:${it.yPx + (it.yJitter || 0)}px; margin-left:${finalOffset}px;">
+            ${stoppedTag}
+            <div class="pentagon" data-role="pentagon"
+                 style="background:${escapeHtml(it.color)}; --rot:${it.rot}deg;"></div>
+
+            <div class="train-label ${labelHidden}" data-role="label">
+              <span class="no">${escapeHtml(it.trainNoLabel)}</span>
+              <span class="type"
+                    style="background:${escapeHtml(it.color)}; border-color:${escapeHtml(it.color)}; color:${escapeHtml(it.textColor)};">
+                ${escapeHtml(train.type || "種別")}
+              </span>
+              <div class="sub">${escapeHtml(it.nameLine || "")}</div>
+              ${it.lastTrainNote ? `<div class="meta">${escapeHtml(it.lastTrainNote)}</div>` : ""}
+            </div>
+          </div>
+        `);
+      };
+
+      const addBranchNode = (it) => {
+        const train = it.train;
+        const stoppedTag = it.stopped ? `<div class="stopped-tag">停車中</div>` : "";
+        const labelHidden =
+          (labelMode === "toggle" && !labelOpenMap.get(train.trainId)) ? "hidden" : "";
+        const baseOffset = (it.sideClass === "left") ? -34 : 34;
+        const extra = (it.stopped && it.stopRank > 0) ? (it.stopRank * 26) : 0;
+        const signedExtra = (it.sideClass === "left") ? -extra : extra;
+
+        nodes.push(`
+          <div class="train branch ${it.sideClass}" data-trainid="${escapeHtml(train.trainId)}"
+               style="left:${it.xPx + baseOffset + signedExtra}px; top:${it.yPx}px;">
+            ${stoppedTag}
+            <div class="pentagon" data-role="pentagon"
+                 style="background:${escapeHtml(it.color)}; --rot:${it.rot}deg;"></div>
+
+            <div class="train-label ${labelHidden}" data-role="label">
+              <span class="no">${escapeHtml(it.trainNoLabel)}</span>
+              <span class="type"
+                    style="background:${escapeHtml(it.color)}; border-color:${escapeHtml(it.color)}; color:${escapeHtml(it.textColor)};">
+                ${escapeHtml(train.type || "種別")}
+              </span>
+              <div class="sub">${escapeHtml(it.nameLine || "")}</div>
+              ${it.lastTrainNote ? `<div class="meta">${escapeHtml(it.lastTrainNote)}</div>` : ""}
+            </div>
+          </div>
+        `);
+      };
+
+      for(const it of upAssigned) addNode(it, "left");
+      for(const it of downAssigned) addNode(it, "right");
+      for(const it of branchPts) addBranchNode(it);
+
+      trainsLayer.innerHTML = nodes.join("");
+
+      runtimeHint.textContent =
+        `表示中の列車数: ${upAssigned.length + downAssigned.length + branchPts.length}（上り:${upAssigned.length} / 下り:${downAssigned.length} / 分岐:${branchPts.length}）`;
+
+      trainsLayer.querySelectorAll(".train").forEach(el=>{
+        const id = el.dataset.trainid;
+        const train = findTrainById(id);
+        if(!train) return;
+
+        const pent = el.querySelector('[data-role="pentagon"]');
+        const label = el.querySelector('[data-role="label"]');
+
+        if(label){
+          label.addEventListener("click", (e)=>{
+            e.stopPropagation();
+            openModalForTrain(train);
+          });
+        }
+
+        if(pent){
+          pent.addEventListener("click", (e)=>{
+            e.stopPropagation();
+            if(labelMode === "toggle"){
+              const cur = !!labelOpenMap.get(train.trainId);
+              labelOpenMap.set(train.trainId, !cur);
+              tick();
+            }else{
+              openModalForTrain(train);
+            }
+          });
+        }
+      });
+    }
+
+    // =========================================================
+    // 駅時刻表
+    // =========================================================
+    function setStationTtTab(dir){
+      const isUp = dir === "up";
+      ttTabUp.setAttribute("aria-selected", String(isUp));
+      ttTabDown.setAttribute("aria-selected", String(!isUp));
+      ttPanelUp.hidden = !isUp;
+      ttPanelDown.hidden = isUp;
+    }
+    ttTabUp.addEventListener("click", ()=>setStationTtTab("up"));
+    ttTabDown.addEventListener("click", ()=>setStationTtTab("down"));
+
+    function setDepBoardTab(dir){
+      const isUp = dir === "up";
+      depTabUp.setAttribute("aria-selected", String(isUp));
+      depTabDown.setAttribute("aria-selected", String(!isUp));
+      depPanelUp.hidden = !isUp;
+      depPanelDown.hidden = isUp;
+    }
+    depTabUp.addEventListener("click", ()=>setDepBoardTab("up"));
+    depTabDown.addEventListener("click", ()=>setDepBoardTab("down"));
+
+    function getActiveDepBoardTab(){
+      return depTabDown.getAttribute("aria-selected") === "true" ? "down" : "up";
+    }
+
+    function trainDestFallback(train){
+      const d = String(train.dest ?? "").trim();
+      if(d) return d;
+      if(train.stops?.length) return train.stops[train.stops.length - 1].stationName;
+      return "";
+    }
+
+    function getVisibleRemarkText(train){
+      const rawRemark = String(train?.remark ?? "").trim();
+      if(!rawRemark.endsWith("?")) return "";
+      return rawRemark.slice(0, -1).trim();
+    }
+
+    function normalizeStationRef(stationRef){
+      if(typeof stationRef === "number"){
+        return { stationIdx: stationRef, code: "", name: "" };
+      }
+      if(stationRef && typeof stationRef === "object"){
+        return {
+          stationIdx: Number.isFinite(stationRef.stationIdx) ? stationRef.stationIdx : null,
+          code: String(stationRef.code ?? "").trim(),
+          name: String(stationRef.name ?? "").trim(),
+        };
+      }
+      return { stationIdx: null, code: "", name: "" };
+    }
+
+    function stationRefKey(stationRef){
+      const ref = normalizeStationRef(stationRef);
+      if(Number.isFinite(ref.stationIdx)) return `idx:${ref.stationIdx}`;
+      if(ref.code) return `code:${ref.code}`;
+      if(ref.name) return `name:${ref.name}`;
+      return "";
+    }
+
+    function readStationIdxValue(v){
+      const s = String(v ?? "").trim();
+      if(!s) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function stationRefMatchesStop(stationRef, stop){
+      const ref = normalizeStationRef(stationRef);
+      if(!stop) return false;
+      if(Number.isFinite(ref.stationIdx) && Number.isFinite(stop.stationIdx) && ref.stationIdx === stop.stationIdx) return true;
+      if(ref.code){
+        return String(stop.code ?? "").trim() === ref.code;
+      }
+      if(ref.name){
+        return String(stop.stationName ?? "").trim() === ref.name;
+      }
+      return false;
+    }
+
+    function resolveStationRefInfo(stationRef){
+      const ref = normalizeStationRef(stationRef);
+      if(Number.isFinite(ref.stationIdx)){
+        const st = scheduleUp?.stations?.find(x => x.idx === ref.stationIdx) || scheduleDown?.stations?.find(x => x.idx === ref.stationIdx);
+        if(st) return { stationIdx: st.idx, code: st.code, name: st.name };
+      }
+
+      if(ref.code || ref.name){
+        const trains = [...(scheduleUp?.trains || []), ...(scheduleDown?.trains || [])];
+        for(const train of trains){
+          const stop = (train.displayStops || train.stops || []).find(s => stationRefMatchesStop(ref, s));
+          if(stop){
+            return {
+              stationIdx: Number.isFinite(stop.stationIdx) ? stop.stationIdx : null,
+              code: String(stop.code ?? ref.code).trim(),
+              name: String(stop.stationName ?? ref.name).trim(),
+            };
+          }
+        }
+      }
+
+      return ref;
+    }
+
+    function buildDepartureBoardNote(train, stationRef){
+      const notes = [];
+      const destName = trainDestFallback(train).trim();
+      const rawRemark = String(train?.remark ?? "").trim();
+      const remarkText = getVisibleRemarkText(train);
+      let hasStopNote = false;
+
+      if(remarkText){
+        notes.push(remarkText);
+      }
+
+      if(lastTrainIdsByDest.has(train.trainId)){
+        notes.push(destName ? `${destName} 行き 最終列車` : "最終列車");
+      }
+
+      if(!rawRemark){
+        const stops = train.displayStops?.length ? train.displayStops : (train.stops || []);
+        const boardIndex = stops.findIndex(s => stationRefMatchesStop(stationRef, s));
+        if(boardIndex >= 0){
+          const laterStops = stops.slice(boardIndex + 1);
+          const hasPassOnly = laterStops.some(s => s.passAbs != null && s.arrAbs == null && s.depAbs == null);
+          if(hasPassOnly){
+            const stopNames = laterStops
+              .filter(s => (s.arrAbs != null || s.depAbs != null) && s.stationName)
+              .map(s => String(s.stationName).trim())
+              .filter(name => name && name !== destName)
+              .filter((name, idx, arr) => arr.indexOf(name) === idx);
+            if(stopNames.length){
+              hasStopNote = true;
+              notes.push(`停車駅：${stopNames.join("・")}`);
+            }
+          }
+        }
+      }
+
+      const text = notes.join(" / ");
+      return {
+        text,
+        marquee: hasStopNote || text.length >= 18,
+      };
+    }
+
+    function collectDeparturesForStation(trains, stationRef){
+      const refInfo = resolveStationRefInfo(stationRef);
+      const refName = String(refInfo?.name ?? "").trim();
+      const out = [];
+      for(const t of (trains || [])){
+        const allStops = t.displayStops?.length ? t.displayStops : t.stops;
+        const s = allStops?.find(x => stationRefMatchesStop(refInfo, x));
+        if(!s) continue;
+
+        const lastStop = allStops?.length ? allStops[allStops.length - 1] : null;
+        const lastStopIdx = lastStop?.stationIdx ?? null;
+
+        let timeAbs = null;
+
+        if(s.depAbs != null){
+          timeAbs = s.depAbs;
+        }else if(s.passAbs != null){
+          continue; // 通過は非表示
+        }else{
+          continue;
+        }
+
+        const hh = Math.floor(((timeAbs % 86400) + 86400) % 86400 / 3600);
+        const mm = Math.floor((((timeAbs % 86400) + 86400) % 86400) % 3600 / 60);
+
+        const dest = trainDestFallback(t);
+        const type = String(t.type ?? "").trim();
+        const note = buildDepartureBoardNote(t, {
+          stationIdx: Number.isFinite(s.stationIdx) ? s.stationIdx : null,
+          code: s.code,
+          name: s.stationName,
+        });
+
+        const firstStop = allStops?.length ? allStops[0] : null;
+        const isOrigin = (refName && String(t.origin ?? "").trim() === refName)
+          || (!!firstStop && stationRefMatchesStop(refInfo, firstStop));
+
+        out.push({
+          abs: timeAbs,
+          h: hh,
+          m: mm,
+          type,
+          dest,
+          destInitial: getDestInitial(dest),
+          trainNo: String(t.trainNo ?? "").trim(),
+          cars: String(t.cars ?? "").trim(),
+          noteText: note.text,
+          noteMarquee: note.marquee,
+          isOrigin,
+          trainId: t.trainId,
+        });
+      }
+
+      out.sort((a,b)=> (a.abs - b.abs) || String(a.trainNo).localeCompare(String(b.trainNo), "ja"));
+      return out;
+    }
+
+    function sortHoursFromStart(hours, startHour){
+      const uniq = [...new Set(hours)].filter(h => Number.isFinite(h)).map(h => Number(h));
+      uniq.sort((a,b)=>{
+        const aa = (a - startHour + 24) % 24;
+        const bb = (b - startHour + 24) % 24;
+        return aa - bb;
+      });
+      return uniq;
+    }
+
+    function buildStationTtHtml(list, label){
+      if(!list.length){
+        return `<div style="color:var(--muted); font-size:13px; font-weight:800; padding: 6px 2px;">${escapeHtml(label)}の時刻表データがありません</div>`;
+      }
+
+      const byHour = new Map();
+      for(const it of list){
+        if(!byHour.has(it.h)) byHour.set(it.h, []);
+        byHour.get(it.h).push(it);
+      }
+
+      const hours = sortHoursFromStart([...byHour.keys()], 4);
+
+      let rows = "";
+      for(const h of hours){
+        const arr = byHour.get(h) || [];
+        const mins = arr.map(it=>{
+          const color = typeColor(it.type);
+          const title = `${it.type || "種別"} / ${it.dest || ""} / ${it.trainNo || ""}`;
+          return `
+            <span class="tt-min ${it.isOrigin ? "origin" : ""}"
+                  data-type="${escapeHtml(it.type || "")}"
+                  data-trainid="${escapeHtml(it.trainId || "")}"
+                  style="--c:${escapeHtml(color)}"
+                  title="${escapeHtml(title)}">
+              <span class="m">${pad2(it.m)}</span>
+              <span class="dest">${escapeHtml(it.destInitial)}</span>
+              <span class="ptype">${escapeHtml(it.type || "種別")}</span>
+            </span>
+          `;
+        }).join("");
+
+        rows += `
+          <tr>
+            <th class="hour" scope="row">${pad2(h)}</th>
+            <td><div class="tt-minwrap">${mins}</div></td>
+          </tr>
+        `;
+      }
+
+      return `
+        <table class="tt-table" aria-label="${escapeHtml(label)}の発車時刻表">
+          <thead>
+            <tr>
+              <th class="hour" scope="col">時</th>
+              <th scope="col">分（右上：行先頭文字）</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function getDepartureBoardState(list){
+      const disp = getDisplayDate();
+      const baseSec = disp.getHours()*3600 + disp.getMinutes()*60 + disp.getSeconds();
+      const hasAfterMidnight = list.some(it => it.abs >= 86400);
+
+      if(CUTOVER_SEC > 0 && hasAfterMidnight && baseSec <= CUTOVER_SEC){
+        const nowAbs = baseSec + 86400;
+        return {
+          ended: false,
+          items: list.filter(it => it.abs >= nowAbs),
+        };
+      }
+
+      if(baseSec < 10800){
+        return { ended: true, items: [] };
+      }
+      return {
+        ended: false,
+        items: list.filter(it => it.abs >= baseSec),
+      };
+    }
+
+    function buildDepartureBoardHtml(list, isEnded = false){
+      const rows = [];
+      if(isEnded || !list.length){
+        rows.push(`
+          <div class="dep-board-row empty">
+            <div></div><div></div><div></div><div></div><div></div>
+          </div>
+        `);
+        rows.push(`
+          <div class="dep-board-row">
+            <div class="message">本日の運転は終了しました</div>
+          </div>
+        `);
+        rows.push(`
+          <div class="dep-board-row empty">
+            <div></div><div></div><div></div><div></div><div></div>
+          </div>
+        `);
+      } else {
+      for(let i=0;i<3;i++){
+        const it = list[i] || null;
+        if(!it){
+          rows.push(`
+            <div class="dep-board-row empty">
+              <div></div><div></div><div></div><div></div><div></div>
+            </div>
+          `);
+          continue;
+        }
+
+        const c = typeColor(it.type);
+        const txt = idealTextColor(c);
+        const carsText = it.cars ? `${escapeHtml(it.cars)}両` : "—";
+        const noteText = escapeHtml(it.noteText || "—");
+        const rawNoteLen = String(it.noteText || "").length;
+        const noteSizeClass = rawNoteLen >= 56 ? " micro" : (rawNoteLen >= 40 ? " tiny" : (rawNoteLen >= 24 ? " compact" : ""));
+
+        rows.push(`
+          <div class="dep-board-row">
+            <div class="type" style="background:${escapeHtml(c)}; color:${escapeHtml(txt)};">${escapeHtml(it.type || "—")}</div>
+            <div class="time">${escapeHtml(`${pad2(it.h)}:${pad2(it.m)}`)}</div>
+            <div class="dest">${escapeHtml(it.dest || "—")}</div>
+            <div class="cars">${carsText}</div>
+            <div class="note${noteSizeClass}"><span class="note-text">${noteText}</span></div>
+          </div>
+        `);
+      }
+      }
+
+      return `
+        <div class="dep-board">
+          <div class="dep-board-head">
+            <div>種別</div>
+            <div>時刻</div>
+            <div>行先</div>
+            <div>両数</div>
+            <div>備考</div>
+          </div>
+          ${rows.join("")}
+        </div>
+      `;
+    }
+
+    function renderDepartureBoard(stationRef){
+      if(!scheduleUp || !scheduleDown) return;
+
+      const st = resolveStationRefInfo(stationRef);
+      const stName = st?.name ?? "駅";
+      const stCode = st?.code ?? "";
+      const upState = getDepartureBoardState(collectDeparturesForStation(scheduleUp.trains, st));
+      const downState = getDepartureBoardState(collectDeparturesForStation(scheduleDown.trains, st));
+
+      depBoardTitle.innerHTML = `
+        <div class="main">${escapeHtml(stName)} <span style="color:var(--muted); font-weight:900;">${escapeHtml(stCode)}</span></div>
+      `;
+      depCountUp.textContent = `(${Math.min(3, upState.items.length)}本)`;
+      depCountDown.textContent = `(${Math.min(3, downState.items.length)}本)`;
+      depPanelUp.innerHTML = buildDepartureBoardHtml(upState.items, upState.ended);
+      depPanelDown.innerHTML = buildDepartureBoardHtml(downState.items, downState.ended);
+    }
+
+    function openDepartureBoard(stationRef){
+      if(!scheduleUp || !scheduleDown) return;
+
+      const st = resolveStationRefInfo(stationRef);
+      depBoardModal.dataset.openStationKey = stationRefKey(st);
+      depBoardModal.dataset.openStationIdx = Number.isFinite(st.stationIdx) ? String(st.stationIdx) : "";
+      depBoardModal.dataset.openStationCode = st.code || "";
+      depBoardModal.dataset.openStationName = st.name || "";
+      renderDepartureBoard(st);
+
+      modal.classList.remove("show");
+      settingsModal.classList.remove("show");
+      stationTtModal.classList.remove("show");
+      depBoardModal.classList.add("show");
+      showBackdrop();
+      setDepBoardTab("up");
+      modalBackState = null;
+      modalBack.hidden = true;
+      stationTtBack.hidden = true;
+    }
+
+    function renderTypeLegendFromLists(...lists){
+      const set = new Set();
+      for(const list of lists){
+        for(const it of (list || [])){
+          const t = String(it?.type ?? "").trim();
+          if(t) set.add(t);
+        }
+      }
+      const types = [...set];
+
+      types.sort((a,b)=>{
+        const aIn = Object.prototype.hasOwnProperty.call(TYPE_COLOR, a);
+        const bIn = Object.prototype.hasOwnProperty.call(TYPE_COLOR, b);
+        if(aIn && !bIn) return -1;
+        if(!aIn && bIn) return 1;
+        return String(a).localeCompare(String(b), "ja");
+      });
+
+      if(!types.length){
+        ttTypeLegend.innerHTML = "";
+        return;
+      }
+
+      ttTypeLegend.innerHTML = types.map(t=>{
+        const c = typeColor(t);
+        const txt = idealTextColor(c);
+        return `<button type="button" class="tt-typechip" data-type="${escapeHtml(t)}"
+                  style="background:${escapeHtml(c)}; border-color:${escapeHtml(c)}; color:${escapeHtml(txt)};">
+                  ${escapeHtml(t)}
+                </button>`;
+      }).join("");
+
+      ttTypeLegend.querySelectorAll(".tt-typechip").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const t = String(btn.dataset.type ?? "").trim();
+          if(!t) return;
+          stationTypeFilter = (stationTypeFilter === t) ? null : t;
+          applyStationTypeFilterVisuals();
+        });
+      });
+
+      applyStationTypeFilterVisuals();
+    }
+
+    function renderDestLegendFromLists(...lists){
+      const pairs = new Map();
+
+      for(const list of lists){
+        for(const it of (list || [])){
+          const abbr = String(it?.destInitial ?? "").trim();
+          const dest = String(it?.dest ?? "").trim();
+          if(!abbr || !dest) continue;
+          if(!pairs.has(abbr)) pairs.set(abbr, dest);
+        }
+      }
+
+      if(!pairs.size){
+        ttDestLegend.innerHTML = "";
+        return;
+      }
+
+      const items = [...pairs.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]), "ja"));
+      ttDestLegend.innerHTML = items.map(([abbr, dest]) =>
+        `<span class="tt-destitem"><span class="abbr">${escapeHtml(abbr)}</span><span>：${escapeHtml(dest)}</span></span>`
+      ).join("");
+    }
+
+    function applyStationTypeFilterVisuals(){
+      stationTtModal.querySelectorAll(".tt-min").forEach(el=>{
+        const t = String(el.dataset.type ?? "").trim();
+        const dim = (stationTypeFilter && t !== stationTypeFilter);
+        el.classList.toggle("dim", !!dim);
+      });
+
+      ttTypeLegend.querySelectorAll(".tt-typechip").forEach(btn=>{
+        const t = String(btn.dataset.type ?? "").trim();
+        const isOn = (!!stationTypeFilter && t === stationTypeFilter);
+        const isDim = (!!stationTypeFilter && t !== stationTypeFilter);
+        btn.classList.toggle("on", isOn);
+        btn.classList.toggle("dim", isDim);
+
+        if(isDim){
+          btn.style.background = "var(--dimBg)";
+          btn.style.borderColor = "var(--dimBorder)";
+          btn.style.color = "var(--dimText)";
+        }else{
+          const c = typeColor(t);
+          const txt = idealTextColor(c);
+          btn.style.background = c;
+          btn.style.borderColor = c;
+          btn.style.color = txt;
+        }
+      });
+    }
+
+    function openTrainFromStationChip(trainId, stationRef){
+      const train = findTrainById(trainId);
+      if(!train) return;
+      const st = resolveStationRefInfo(stationRef);
+      openModalForTrain(train, Number.isFinite(st.stationIdx) ? st.stationIdx : null, {
+        type: "station",
+        stRef: st,
+      });
+    }
+
+    function bindStationTimetableTrainOpenHandlers(){
+      const handler = (e)=>{
+        const chip = e.target.closest(".tt-min");
+        if(!chip) return;
+
+        const trainId = String(chip.dataset.trainid ?? "").trim();
+        if(!trainId) return;
+
+        openTrainFromStationChip(trainId, {
+          stationIdx: readStationIdxValue(stationTtModal.dataset.openStationIdx),
+          code: String(stationTtModal.dataset.openStationCode ?? ""),
+          name: String(stationTtModal.dataset.openStationName ?? ""),
+        });
+      };
+
+      ttPanelUp.addEventListener("click", handler);
+      ttPanelDown.addEventListener("click", handler);
+    }
+    bindStationTimetableTrainOpenHandlers();
+
+    function openStationTimetable(stationRef, backState = null){
+      if(!scheduleUp || !scheduleDown) return;
+
+      const st = resolveStationRefInfo(stationRef);
+      stationTtModal.dataset.openStationKey = stationRefKey(st);
+      stationTtModal.dataset.openStationIdx = Number.isFinite(st.stationIdx) ? String(st.stationIdx) : "";
+      stationTtModal.dataset.openStationCode = st.code || "";
+      stationTtModal.dataset.openStationName = st.name || "";
+      stationTypeFilter = null;
+      const stName = st?.name ?? "駅";
+      const stCode = st?.code ?? "";
+
+      stationTtTitle.innerHTML = `
+        <div class="main">駅時刻表：${escapeHtml(stName)} <span style="color:var(--muted); font-weight:900;">${escapeHtml(stCode)}</span></div>
+        <div class="sub">発車時刻を押すと列車時刻表が表示されます</div>
+      `;
+
+      const upList = collectDeparturesForStation(scheduleUp.trains, st);
+      const downList = collectDeparturesForStation(scheduleDown.trains, st);
+
+      ttCountUp.textContent = `(${upList.length}本)`;
+      ttCountDown.textContent = `(${downList.length}本)`;
+
+      ttPanelUp.innerHTML = buildStationTtHtml(upList, "上り");
+      ttPanelDown.innerHTML = buildStationTtHtml(downList, "下り");
+
+      renderTypeLegendFromLists(upList, downList);
+      renderDestLegendFromLists(upList, downList);
+      setStationTtTab("up");
+
+      modal.classList.remove("show");
+      settingsModal.classList.remove("show");
+      stationTtModal.classList.add("show");
+      showBackdrop();
+      modalBackState = backState;
+      stationTtBack.hidden = !backState;
+      modalBack.hidden = true;
+    }
+
+    async function loadAll(){
+      dataStatus.innerHTML = "データ: 読み込み中…<br>（しばらくお待ちください）";
+
+      const disp = getDisplayDate();
+      const dayKey = getDayKey(disp);
+
+      const csvUp   = CSV_BY_DAY[dayKey]?.up;
+      const csvDown = CSV_BY_DAY[dayKey]?.down;
+
+      if(!csvUp || !csvDown){
+        throw new Error(`CSV_BY_DAY の設定が不正です（dayKey=${dayKey}）`);
+      }
+
+      const bust = `?ts=${Date.now()}`;
+
+      const [upText, downText] = await Promise.all([
+        fetch(csvUp + bust, {cache:"no-store"}).then(r => {
+          if(!r.ok) throw new Error(`上りCSVの読み込み失敗: ${r.status}`);
+          return r.text();
+        }),
+        fetch(csvDown + bust, {cache:"no-store"}).then(r => {
+          if(!r.ok) throw new Error(`下りCSVの読み込み失敗: ${r.status}`);
+          return r.text();
+        }),
+      ]);
+
+      const refStations = extractStationsFromUpCsv(upText);
+
+      scheduleUp   = parseScheduleWithRefStations(upText,   "up",   "UP",   refStations);
+      scheduleDown = parseScheduleWithRefStations(downText, "down", "DOWN", refStations);
+
+      STATION_COUNT = refStations.length;
+      CUTOVER_SEC = computeCutoverSec(scheduleUp, scheduleDown);
+      lastTrainIdsByDest = computeLastTrainIdsByDestination(scheduleUp, scheduleDown);
+
+      buildStationsUI(refStations);
+
+      dataStatus.innerHTML =
+        `データ: 読み込み完了<br>（ダイヤ:${escapeHtml(dayKey)} / 駅 ${STATION_COUNT} / 上り列車 ${scheduleUp.trains.length} / 下り列車 ${scheduleDown.trains.length}）`;
+
+      for(const k of [...labelOpenMap.keys()]){
+        const exists = scheduleUp.trains.some(t=>t.trainId===k) || scheduleDown.trains.some(t=>t.trainId===k);
+        if(!exists) labelOpenMap.delete(k);
+      }
+
+      requestAnimationFrame(() => tick());
+    }
+
+    function sleep(ms){
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function setLoadingOverlayText(mainText, subText = "しばらくお待ちください"){
+      loadingMain.textContent = mainText;
+      loadingSub.textContent = subText;
+    }
+
+    async function withLoadingOverlay(task, minMs = 2000, mainText = "列車位置データを読み込み中です", subText = "しばらくお待ちください"){
+      const startedAt = Date.now();
+      setLoadingOverlayText(mainText, subText);
+      loadingOverlay.hidden = false;
+      loadingOverlay.classList.add("show");
+
+      try{
+        return await task();
+      }finally{
+        const elapsed = Date.now() - startedAt;
+        const remain = Math.max(0, minMs - elapsed);
+        if(remain > 0) await sleep(remain);
+        loadingOverlay.classList.remove("show");
+        loadingOverlay.hidden = true;
+        setLoadingOverlayText("列車位置データを読み込み中です", "しばらくお待ちください");
+      }
+    }
+
+    function getDisplayDate(){
+      const real = new Date();
+      return new Date(real.getTime() + displayOffsetSec * 1000);
+    }
+
+    function hardReloadPage(){
+      const url = new URL(window.location.href);
+      url.searchParams.set("_reload", String(Date.now()));
+      window.location.replace(url.toString());
+    }
+
+    function tick(){
+      const realNow = new Date();
+      nowTimeEl.textContent = `現在時刻: ${formatNow(realNow)}`;
+      const disp = getDisplayDate();
+      displayTimeEl.textContent = formatNow(disp);
+      renderTrains(disp);
+      updateTrainModalRailPosition();
+      if(depBoardModal.classList.contains("show")){
+        const activeTab = getActiveDepBoardTab();
+        renderDepartureBoard({
+          stationIdx: readStationIdxValue(depBoardModal.dataset.openStationIdx),
+          code: String(depBoardModal.dataset.openStationCode ?? ""),
+          name: String(depBoardModal.dataset.openStationName ?? ""),
+        });
+        setDepBoardTab(activeTab);
+      }
+    }
+
+    btnRefresh.addEventListener("click", ()=>{
+      hardReloadPage();
+    });
+
+    btnCsvReload.addEventListener("click", async ()=>{
+      try{
+        await withLoadingOverlay(async ()=>{
+          await loadSiteConfig();
+          await loadAll();
+          closeAllModals();
+        });
+      }
+      catch(e){
+        console.error(e);
+        dataStatus.innerHTML = "データ: 読み込み失敗<br>（コンソールを確認）";
+        alert(String(e?.message ?? e));
+      }
+    });
+
+    (function initSettings(){
+      labelMode = loadLabelMode();
+      displayTimeVisibility = loadDisplayTimeVisibility();
+      showPassStopsMode = loadShowPassStopsMode();
+      applyDisplayTimeVisibility();
+    })();
+
+    document.documentElement.style.setProperty("--line", LINE_COLOR);
+
+    (async function init(){
+      syncFullscreenButtons();
+      await loadSiteConfig();
+      try{ await loadAll(); }
+      catch(e){
+        console.error(e);
+        dataStatus.innerHTML = "データ: 読み込み失敗<br>（CSVファイル名/配置を確認）";
+        alert(String(e?.message ?? e));
+      }
+      tick();
+      const updateSec = configNumber("train_position_update_interval_seconds", 1);
+      const updateMs = Math.max(1, updateSec) * 1000;
+      setInterval(tick, updateMs);
+    })();
+
+    window.addEventListener("resize", ()=>{
+      if(scheduleUp?.stations) buildStationsUI(scheduleUp.stations);
+      tick();
+    });
+  </script>
+</body>
+</html>

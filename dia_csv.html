@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ダイヤCSV入力ヘルプ</title>
+  <style>
+    :root{
+      --line:#399E92;
+      --header:#144479;
+      --bg:#f3f7fb;
+      --panel:#ffffff;
+      --text:#17212b;
+      --muted:#607181;
+      --divider:rgba(0,0,0,.10);
+      --shadow:0 18px 40px rgba(0,0,0,.10);
+      --warn:#8a5a00;
+      --warn-bg:#fff8e6;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Segoe UI", Arial, sans-serif;
+      color:var(--text);
+      background: linear-gradient(180deg, #f8fbfd 0%, var(--bg) 100%);
+      line-height:1.7;
+    }
+    main{
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 18px 12px 32px;
+    }
+    .hero{
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(20,68,121,.98), rgba(57,158,146,.92));
+      color:#fff;
+      box-shadow: var(--shadow);
+    }
+    h1{
+      margin:0;
+      font-size: clamp(24px, 4vw, 38px);
+      line-height:1.12;
+      letter-spacing:0;
+    }
+    .hero p{
+      margin:10px 0 0;
+      color:rgba(255,255,255,.9);
+      font-size:14px;
+    }
+    .links{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .links a{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:40px;
+      padding: 9px 13px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.10);
+      color:#fff;
+      text-decoration:none;
+      font-weight:900;
+      font-size:13px;
+    }
+    section{
+      margin-top:14px;
+      padding:16px;
+      background:var(--panel);
+      border:1px solid var(--divider);
+      box-shadow: 0 10px 28px rgba(0,0,0,.06);
+    }
+    h2{
+      margin:0 0 10px;
+      font-size:18px;
+      line-height:1.25;
+      letter-spacing:0;
+    }
+    h3{
+      margin:14px 0 6px;
+      font-size:15px;
+      line-height:1.35;
+    }
+    p{ margin:8px 0; }
+    ul{
+      margin:8px 0 0;
+      padding-left:1.3em;
+    }
+    li{ margin:5px 0; }
+    code{
+      padding: 2px 5px;
+      background:#eef3f8;
+      border:1px solid rgba(0,0,0,.06);
+      color:#17212b;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size:.95em;
+    }
+    pre{
+      margin:10px 0 0;
+      padding:12px;
+      overflow:auto;
+      background:#ffffff;
+      color:#17212b;
+      border:1px solid var(--divider);
+      font-size:13px;
+      line-height:1.45;
+    }
+    pre code{
+      display:block;
+      padding:0;
+      background:transparent;
+      border:0;
+      color:#17212b;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+      background:#fff;
+    }
+    th,td{
+      border:1px solid var(--divider);
+      padding:9px 10px;
+      text-align:left;
+      vertical-align:top;
+      font-size:14px;
+    }
+    th{
+      background:#eef3f8;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .note{
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+    .warn{
+      margin-top:10px;
+      padding:10px 12px;
+      border:1px solid rgba(138,90,0,.22);
+      background:var(--warn-bg);
+      color:var(--warn);
+      font-size:13px;
+      font-weight:800;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:12px;
+      margin-top:10px;
+    }
+    .mini{
+      border:1px solid var(--divider);
+      background:#f7fafc;
+      padding:12px;
+    }
+    .mini h3{ margin-top:0; }
+    @media (max-width: 720px){
+      main{ padding:12px 10px 24px; }
+      section{ padding:12px; }
+      th,td{ font-size:13px; padding:8px; }
+      .links a{ flex:1 1 calc(50% - 5px); }
+      .grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>ダイヤCSV入力ヘルプ</h1>
+      <p><code>honsen_kudari.csv</code> などのダイヤデータに、駅ナンバリング、列車情報、発車標の備考を手入力するときの説明です。</p>
+      <div class="links" aria-label="ページ移動">
+        <a href="assistance.html">作者向けヘルプ</a>
+        <a href="index.html">列車走行位置</a>
+        <a href="diagram.html">ダイヤグラム</a>
+        <a href="n_rosen.html">路線時刻表</a>
+      </div>
+    </section>
+
+    <section>
+      <h2>CSVの基本構造</h2>
+      <p>ダイヤCSVは、左側3列で行の意味を表し、4列目以降に列車ごとの情報を横方向に入力します。</p>
+      <table>
+        <thead>
+          <tr><th>列</th><th>内容</th><th>入力例</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1列目</td><td>駅番号、または行の見出しです。駅ナンバリングはここに入力します。</td><td><code>N39</code>、<code>駅番号</code></td></tr>
+          <tr><td>2列目</td><td>駅名、または列車情報の見出しです。</td><td><code>新糸崎</code>、<code>備考</code>、<code>列車番号</code></td></tr>
+          <tr><td>3列目</td><td>駅行の場合は <code>着</code>、<code>発</code>、<code>番線</code> を入力します。</td><td><code>発</code></td></tr>
+          <tr><td>4列目以降</td><td>列車ごとの値を入力します。列車1本につき1列です。</td><td><code>41500</code>、<code>各停</code>、<code>海土路</code></td></tr>
+        </tbody>
+      </table>
+      <div class="warn">列車ごとの情報は、同じ列にそろえて入力してください。列車番号、種別、始発駅、終着駅、各駅の時刻が横にずれると、別の列車の情報として読み込まれます。</div>
+    </section>
+
+    <section>
+      <h2>上部の列車情報行</h2>
+      <p>CSVの上部には、列車番号や種別など、列車1本ごとの基本情報を入力します。現在のHTMLでは次の行が主に使われます。</p>
+      <table>
+        <thead>
+          <tr><th>行の目安</th><th>2列目の見出し</th><th>反映先</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>2行目</td><td><code>備考</code></td><td>発車標、列車時刻表、印刷用表示の備考欄に表示されます。</td></tr>
+          <tr><td>4行目</td><td><code>両数</code></td><td>列車時刻表や列車情報に表示されます。</td></tr>
+          <tr><td>5行目</td><td><code>列車番号</code></td><td>列車を読み込むための基準です。ここが空欄の列は列車として扱われません。</td></tr>
+          <tr><td>7行目</td><td><code>列車種別</code></td><td>種別表示、色分け、ダイヤグラムの凡例に使われます。</td></tr>
+          <tr><td>8行目</td><td><code>列車名</code></td><td>列車時刻表などに表示されます。</td></tr>
+          <tr><td>9〜10行目</td><td><code>号数</code> と <code>号</code></td><td>列車名に号数を付ける場合に使われます。</td></tr>
+          <tr><td>11行目</td><td><code>始発駅</code></td><td>列車の始発表示に使われます。</td></tr>
+          <tr><td>13行目</td><td>始発駅側の時刻</td><td>列車走行位置で、始発前の表示や運用上の補助時刻として使われます。路線時刻表・ダイヤグラムの列車時刻表モーダルでは、路線外始発駅の時刻補完にも使われます。</td></tr>
+          <tr><td>15行目</td><td><code>終着駅</code></td><td>行先表示、駅時刻表の行先略称、列車時刻表に使われます。</td></tr>
+          <tr><td>17行目</td><td>終着駅側の時刻</td><td>列車走行位置で、終着後もしばらく表示する場合の補助時刻として使われます。路線時刻表・ダイヤグラムの列車時刻表モーダルでは、路線外終着駅の時刻補完にも使われます。</td></tr>
+        </tbody>
+      </table>
+      <p class="note">行の位置は固定で読み込まれます。見出しの文字だけを移動しても読み取り位置は変わらないため、行を追加・削除する場合は注意してください。</p>
+    </section>
+
+    <section>
+      <h2>駅ナンバリング</h2>
+      <p>駅ナンバリングは、駅行の1列目に入力します。駅名は2列目、行の種類は3列目に入力します。</p>
+      <pre><code>N39,新糸崎,番線
+,新糸崎,発
+N38,灘急三原,着
+,灘急三原,番線
+,灘急三原,発</code></pre>
+      <p>同じ駅に <code>着</code>、<code>発</code>、<code>番線</code> の複数行がある場合、駅番号は最初の行に入っていれば表示に使われます。</p>
+      <p>駅名欄が空欄でも直前の駅名を引き継いで読めるようになっていますが、編集ミスを防ぐため、できるだけ駅名は明記してください。</p>
+      <p class="note">1列目が空欄の駅は、HTML側で仮の駅番号が割り当てられる場合があります。正式な駅ナンバリングを表示したい駅には、できるだけCSVに駅番号を入れてください。</p>
+    </section>
+
+    <section>
+      <h2>発車標の備考</h2>
+      <p><code>備考</code> 行の各列に入力した文字は、その列車の備考として発車標や列車時刻表に表示されます。</p>
+      <pre><code>,備考,,,,津和野いにしへの路車両で運転?,,,,,灘急本通から先、後方4両は灘急岩国行き 前方4両は灘急川尻行き?</code></pre>
+      <ul>
+        <li>備考は列車ごとの列に入力します。</li>
+        <li>長い文章も表示できますが、発車標では表示幅に限りがあります。</li>
+        <li>条件付き・注意喚起の文は、短めにまとめると見やすくなります。</li>
+      </ul>
+      <p class="note">現在の表示では、末尾に <code>?</code> が付いた備考を案内文として扱う箇所があります。既存データに合わせる場合は、備考文の最後に <code>?</code> を付けてください。</p>
+    </section>
+
+    <section>
+      <h2>時刻の入力形式</h2>
+      <p>時刻は <code>HHMMSS</code> 形式で入力します。例として、4時15分00秒は <code>41500</code> または <code>041500</code> と書けます。</p>
+      <table>
+        <thead>
+          <tr><th>入力</th><th>意味</th><th>表示の扱い</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>41500</code></td><td>04:15:00</td><td>通常の着発時刻です。</td></tr>
+          <tr><td><code>55900?</code></td><td>05:59:00 通過</td><td>通過時刻として扱われます。</td></tr>
+          <tr><td><code>1000</code></td><td>00:10:00</td><td>深夜帯の時刻として扱われます。4:00〜翌日3:59を1日として扱うため、表示上は24時台以降へ補正される場合があります。</td></tr>
+          <tr><td><code>||</code></td><td>その駅を経由しない・扱わない</td><td>路線時刻表では必要な箇所に <code>||</code> が表示され、列車時刻表や走行位置では停車駅として扱われません。</td></tr>
+          <tr><td>空欄</td><td>時刻なし</td><td>その駅では時刻表示されません。</td></tr>
+        </tbody>
+      </table>
+      <p class="note">24時以降の列車は、前後の時刻順をもとにHTML側で翌日扱いへ補正されます。金曜深夜から土曜早朝にかかる列車も、この考え方で表示されます。</p>
+    </section>
+
+    <section>
+      <h2>列車種別と行先略称</h2>
+      <div class="grid">
+        <div class="mini">
+          <h3>列車種別</h3>
+          <p><code>列車種別</code> 行に入力した文字は、各ページの種別表示に使われます。</p>
+          <p>種別ごとの色は <code>view_select.csv</code> の <code>type_color_種別名</code> で設定できます。</p>
+          <pre><code>type_color_特急,#164190
+type_color_快速,#E99313</code></pre>
+        </div>
+        <div class="mini">
+          <h3>行先略称</h3>
+          <p><code>終着駅</code> 行の文字は、駅時刻表の行先表示に使われます。</p>
+          <p>短い表示名にしたい場合は <code>view_select.csv</code> の <code>dest_initial_行先名</code> で設定できます。</p>
+          <pre><code>dest_initial_新糸崎,新糸
+dest_initial_広島空港,広空</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>手入力時の確認ポイント</h2>
+      <ul>
+        <li><code>列車番号</code> 行が空欄の列は、列車として読み込まれません。</li>
+        <li>駅名は、<code>着</code>、<code>発</code>、<code>番線</code> の各行で表記をそろえてください。</li>
+        <li>通過時刻は時刻の末尾に <code>?</code> を付けます。</li>
+        <li>駅を通らない列車は <code>||</code>、時刻未設定は空欄にします。</li>
+        <li>路線外の始発駅や終着駅も列車時刻表モーダルへ出したい場合は、11・13行目、15・17行目の組を空欄にしないでください。</li>
+        <li>種別色や行先略称を設定する場合、CSV内の種別名・行先名と <code>view_select.csv</code> の設定名を完全に一致させてください。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>表示名設定ヘルプ</title>
+  <style>
+    :root{
+      --line:#399E92;
+      --header:#144479;
+      --bg:#f3f7fb;
+      --panel:#ffffff;
+      --text:#17212b;
+      --muted:#6b7b8a;
+      --divider:rgba(0,0,0,.10);
+      --shadow:0 18px 40px rgba(0,0,0,.10);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Segoe UI", Arial, sans-serif;
+      color:var(--text);
+      background: linear-gradient(180deg, #f8fbfd 0%, var(--bg) 100%);
+      line-height:1.65;
+    }
+    main{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px 12px 32px;
+    }
+    .hero{
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(20,68,121,.98), rgba(57,158,146,.92));
+      color:#fff;
+      box-shadow: var(--shadow);
+    }
+    h1{
+      margin:0;
+      font-size: clamp(24px, 4vw, 38px);
+      line-height:1.12;
+    }
+    .hero p{
+      margin:10px 0 0;
+      color:rgba(255,255,255,.9);
+      font-size:14px;
+    }
+    .links{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .links a{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 9px 13px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.10);
+      color:#fff;
+      text-decoration:none;
+      font-weight:900;
+      font-size:13px;
+    }
+    section{
+      margin-top:14px;
+      padding:16px;
+      background:var(--panel);
+      border:1px solid var(--divider);
+      box-shadow: 0 10px 28px rgba(0,0,0,.06);
+    }
+    h2{
+      margin:0 0 10px;
+      font-size:18px;
+      line-height:1.25;
+    }
+    p{ margin:8px 0; }
+    code{
+      padding: 2px 5px;
+      background:#eef3f8;
+      border:1px solid rgba(0,0,0,.06);
+      color:#17212b;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size:.95em;
+    }
+    pre{
+      margin:10px 0 0;
+      padding:12px;
+      overflow:auto;
+      background:#ffffff;
+      color:#17212b;
+      border:1px solid var(--divider);
+      font-size:13px;
+      line-height:1.45;
+    }
+    pre code{
+      display:block;
+      padding:0;
+      background:transparent;
+      border:0;
+      color:#17212b;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+      background:#fff;
+    }
+    th,td{
+      border:1px solid var(--divider);
+      padding:9px 10px;
+      text-align:left;
+      vertical-align:top;
+      font-size:14px;
+    }
+    th{
+      background:#eef3f8;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .note{
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+    @media (max-width: 640px){
+      main{ padding:12px 10px 24px; }
+      section{ padding:12px; }
+      th,td{ font-size:13px; padding:8px; }
+      .links a{ flex:1 1 calc(50% - 5px); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>表示名設定ヘルプ</h1>
+      <p>ダイヤ作者向けに、<code>view_select.csv</code>で変更できる表示名と、3つのページへの反映先をまとめています。</p>
+      <div class="links" aria-label="ページ移動">
+        <a href="index.html">列車走行位置</a>
+        <a href="diagram.html">ダイヤグラム</a>
+        <a href="n_rosen.html">路線時刻表</a>
+        <a href="dia_csv.html">ダイヤCSV入力</a>
+        <a href="help.html">閲覧者向けヘルプ</a>
+      </div>
+    </section>
+
+    <section>
+      <h2>設定ファイル</h2>
+      <p><code>view_select.csv</code>は、1列目に設定名、2列目に表示したい文字を入れるCSVです。</p>
+      <pre><code>key,value
+config_mode,simple</code></pre>
+      <p class="note">CSVが読み込めない場合は、各HTML内の初期表示名が使われます。</p>
+      <p class="note"><code>config_mode</code> は <code>basic</code> または <code>simple</code> を指定します。日本語で <code>基本</code>、<code>簡易</code> と書くこともできます。</p>
+      <p class="note">簡易モードでは、CSVファイル名が標準のままなら上記2行だけで動きます。CSVファイル名を変えたい場合だけ、該当行を追加してください。</p>
+      <p class="note">祝日一覧の設定は不要です。土曜・日曜に加え、日本の祝日、振替休日、国民の休日は自動判定され、土休日CSVが使われます。</p>
+    </section>
+
+    <section>
+      <h2>設定モード</h2>
+      <p><code>config_mode,basic</code> は基本モードです。<code>view_select.csv</code> 内の設定項目が通常通り反映されます。</p>
+      <p><code>config_mode,simple</code> は簡易モードです。原則として各HTML内の初期値を使うため、CSVをほとんど編集せずに動かせます。</p>
+      <p>簡易モードでCSVから反映されるのは、<code>config_mode</code> と曜日別CSVファイル名だけです。駅リスト抽出の起点駅は、CSV内の最初の駅データ行から自動判定されます。</p>
+    </section>
+
+    <section>
+      <h2>設定項目</h2>
+      <table>
+        <thead>
+          <tr><th>key</th><th>反映される内容</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>config_mode</code></td><td><code>basic</code>で基本モード、<code>simple</code>で簡易モードにします。<code>基本</code>、<code>簡易</code> も指定できます。</td></tr>
+          <tr><td><code>line_name</code></td><td>路線名です。各ページの大きな見出しやブラウザタイトルに使われます。</td></tr>
+          <tr><td><code>line_short_name</code></td><td>短い路線名です。ダイヤグラムページの説明文に使われます。</td></tr>
+          <tr><td><code>operator_name</code></td><td>事業者名です。今後の案内文や注記で使うための共通項目です。</td></tr>
+          <tr><td><code>train_position_page_name</code></td><td>列車走行位置ページ名です。ページ見出しや他ページからのリンクボタン名に使われます。</td></tr>
+          <tr><td><code>diagram_page_name</code></td><td>ダイヤグラムページ名です。ページ見出し、パネル見出し、リンクボタン名に使われます。</td></tr>
+          <tr><td><code>route_timetable_page_name</code></td><td>路線時刻表ページ名です。ページ見出し、上り/下り切替ボタン、リンクボタン名に使われます。</td></tr>
+          <tr><td><code>route_links_visible</code></td><td><code>true</code>で設定モーダル内の他路線リンクを表示、<code>false</code>で非表示にします。</td></tr>
+          <tr><td><code>route_links_group_name</code></td><td>設定モーダル内の「○○各路線」の○○部分に使われます。</td></tr>
+          <tr><td><code>route_link_番号_label</code></td><td>他路線リンクの表示名です。例: <code>route_link_1_label</code></td></tr>
+          <tr><td><code>route_link_番号_href</code></td><td>他路線リンクのURLです。例: <code>route_link_1_href</code></td></tr>
+          <tr><td><code>train_position_update_interval_seconds</code></td><td>列車走行位置の更新間隔です。<code>1</code>なら1秒ごと、<code>60</code>なら1分ごとです。</td></tr>
+          <tr><td><code>diagram_meta_visible</code></td><td>ダイヤグラムページの「運行日 / CSV / 列車数」表示を切り替えます。</td></tr>
+          <tr><td><code>route_timetable_meta_visible</code></td><td>路線時刻表ページの「ダイヤ / 駅数 / 上り列車 / 下り列車」表示を切り替えます。</td></tr>
+          <tr><td><code>csv_mon_thu_up</code> / <code>csv_mon_thu_down</code></td><td>平日の上り・下りCSVファイル名です。3ページ共通で使われます。</td></tr>
+          <tr><td><code>csv_friday_up</code> / <code>csv_friday_down</code></td><td>金曜の上り・下りCSVファイル名です。3ページ共通で使われます。</td></tr>
+          <tr><td><code>csv_sat_holiday_up</code> / <code>csv_sat_holiday_down</code></td><td>土休日の上り・下りCSVファイル名です。土曜・日曜・日本の祝日は自動でこの設定になります。</td></tr>
+          <tr><td><code>station_start_name</code></td><td>駅リスト抽出の起点駅名です。列車走行位置、ダイヤグラム、路線時刻表で使われます。</td></tr>
+          <tr><td><code>diagram_time_range_種類_label</code></td><td>ダイヤグラムの時間帯選択に表示する文字です。種類は <code>full</code>、<code>day</code>、<code>evening</code>、<code>late</code> です。</td></tr>
+          <tr><td><code>diagram_time_range_種類_start_hour</code> / <code>end_hour</code></td><td>ダイヤグラムの時間帯の開始時刻・終了時刻です。<code>28</code> のような24時超え表記も使えます。</td></tr>
+          <tr><td><code>line_color</code></td><td>本線カラーです。列車走行位置の本線表示、種別カラー未設定時の既定色に使われます。</td></tr>
+          <tr><td><code>branch_line_color</code></td><td>支線カラーです。列車走行位置の支線表示に使われます。</td></tr>
+          <tr><td><code>extra_line_color_番号_prefix</code> / <code>extra_line_color_番号_color</code></td><td>路線外路線カラーです。駅番号の先頭文字と色を組み合わせて設定します。例: <code>TR</code> と <code>#369944</code></td></tr>
+          <tr><td><code>branch_anchor_code</code> / <code>branch_anchor_name</code></td><td>支線が本線から分岐する駅番号・駅名です。</td></tr>
+          <tr><td><code>branch_station_番号_code</code> など</td><td>支線駅の駅番号、駅名、横位置、基準にする本線駅番号、縦位置を設定します。</td></tr>
+          <tr><td><code>branch_fallback_travel_sec</code></td><td>支線駅間の時刻補間に使う既定所要秒数です。</td></tr>
+          <tr><td><code>type_color_種別名</code></td><td>列車種別カラーです。例: <code>type_color_特急,#164190</code></td></tr>
+          <tr><td><code>dest_initial_行先名</code></td><td>駅時刻表に表示する行先略称です。例: <code>dest_initial_新糸崎,新糸</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>列車走行位置 index.html</h2>
+      <p><code>line_name</code> と <code>train_position_page_name</code> が、画面上部のタイトルとブラウザタイトルに反映されます。</p>
+      <p><code>diagram_page_name</code> と <code>route_timetable_page_name</code> は、上部のページ切替ボタンに反映されます。</p>
+      <p><code>route_links_visible</code>、<code>route_links_group_name</code>、<code>route_link_番号_label</code>、<code>route_link_番号_href</code> は、設定モーダル内の他路線リンクに反映されます。</p>
+      <p><code>train_position_update_interval_seconds</code> は、列車位置の再描画間隔に反映されます。</p>
+      <p><code>station_start_name</code> は、駅リストを読み始める起点駅に反映されます。</p>
+      <p><code>line_color</code>、<code>branch_line_color</code>、<code>extra_line_color_番号_prefix</code>、<code>extra_line_color_番号_color</code>、<code>branch_anchor_*</code>、<code>branch_station_番号_*</code> は、路線図の色と支線配置に反映されます。</p>
+      <p><code>type_color_種別名</code> と <code>dest_initial_行先名</code> は、列車ごとの表示色と駅時刻表の行先略称に反映されます。</p>
+    </section>
+
+    <section>
+      <h2>ダイヤグラム diagram.html</h2>
+      <p><code>line_name</code> と <code>diagram_page_name</code> が、ページ見出しとブラウザタイトルに反映されます。</p>
+      <p><code>line_short_name</code> は説明文の「○○の列車ダイヤ」の部分に反映されます。</p>
+      <p><code>diagram_page_name</code> は、上り/下り/上下のパネル見出しや読み込み中メッセージにも使われます。</p>
+      <p><code>train_position_page_name</code> と <code>route_timetable_page_name</code> は、ページ切替ボタンに反映されます。</p>
+      <p><code>diagram_meta_visible</code> は、ページ上部の運行日・CSV・列車数表示に反映されます。</p>
+      <p><code>csv_*</code> は、表示する曜日別CSVに反映されます。祝日は自動判定され、土休日CSVが使われます。</p>
+      <p><code>station_start_name</code> は、駅リストを読み始める起点駅に反映されます。</p>
+      <p><code>diagram_time_range_*</code> は、時間帯選択の表示名と表示範囲に反映されます。</p>
+      <p><code>type_color_種別名</code> は、ダイヤ線・凡例・列車時刻表モーダルの種別色に反映されます。</p>
+    </section>
+
+    <section>
+      <h2>路線時刻表 n_rosen.html</h2>
+      <p><code>line_name</code> と <code>route_timetable_page_name</code> が、ページ見出しとブラウザタイトルに反映されます。</p>
+      <p><code>route_timetable_page_name</code> は、上り/下りの切替ボタン、各パネル見出し、表のアクセシビリティ用ラベルにも使われます。</p>
+      <p><code>train_position_page_name</code> と <code>diagram_page_name</code> は、ページ切替ボタンに反映されます。</p>
+      <p><code>route_timetable_meta_visible</code> は、ページ上部のダイヤ・駅数・列車数表示に反映されます。</p>
+      <p><code>csv_*</code> は、表示する曜日別CSVに反映されます。祝日は自動判定され、土休日CSVが使われます。</p>
+      <p><code>station_start_name</code> は、駅リストを読み始める起点駅に反映されます。</p>
+      <p><code>type_color_種別名</code> と <code>dest_initial_行先名</code> は、列車時刻表の種別色と駅時刻表の行先略称に反映されます。</p>
+    </section>
+  </main>
+</body>
+</html>

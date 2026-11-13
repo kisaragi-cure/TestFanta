@@ -1,0 +1,2561 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>架空鉄道　路線時刻表</title>
+  <style>
+    :root{
+      --line:#399E92;
+      --header:#144479;
+      --bg:#eef3f8;
+      --panel:#ffffff;
+      --text:#17212b;
+      --muted:#6b7b8a;
+      --divider:rgba(0,0,0,.08);
+      --shadow:0 18px 40px rgba(0,0,0,.10);
+      --dimText:#9aa3ad;
+      --dimBorder:rgba(0,0,0,.10);
+      --dimBg:rgba(243,245,248,.75);
+    }
+
+    *{ box-sizing:border-box; }
+    [hidden]{ display:none !important; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(57,158,146,.12), transparent 34%),
+        linear-gradient(180deg, #f6f9fc 0%, #eaf0f6 100%);
+      color:var(--text);
+    }
+    main{
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 18px 12px 32px;
+    }
+    .hero{
+      background: linear-gradient(135deg, rgba(20,68,121,.98), rgba(57,158,146,.92));
+      color:#fff;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 20px 20px 16px;
+    }
+    .hero h1{
+      margin:0;
+      font-size: clamp(26px, 4vw, 40px);
+      line-height:1.1;
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
+    .hero p{
+      margin:10px 0 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: rgba(255,255,255,.9);
+    }
+    .meta-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top: 12px;
+    }
+    .meta-pill{
+      display:inline-flex;
+      align-items:center;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tabs{
+      display:flex;
+      gap:10px;
+      margin: 18px 0 14px;
+      flex-wrap: wrap;
+    }
+    .route-tabs,
+    .page-links{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .tab-btn{
+      appearance:none;
+      border:1px solid rgba(20,68,121,.12);
+      background:#fff;
+      color:var(--muted);
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,.06);
+    }
+    a.tab-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      background: rgba(20,68,121,.10);
+      border-color: rgba(20,68,121,.28);
+      color: var(--header);
+    }
+    a.tab-btn.help-link{
+      min-width: 44px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    .tab-btn.fs-btn{
+      min-width: 44px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    .tab-btn.fs-btn{
+      position: relative;
+      font-size: 0;
+    }
+    .tab-btn.fs-btn .win{
+      position: relative;
+      display:block;
+      width: 16px;
+      height: 12px;
+      margin: 0 auto;
+      border: 2px solid currentColor;
+      border-radius: 2px;
+    }
+    .tab-btn.fs-btn .win::before{
+      content:"";
+      position:absolute;
+      left:-2px;
+      right:-2px;
+      top:-2px;
+      height: 3px;
+      background: currentColor;
+      border-radius: 2px 2px 0 0;
+    }
+    .tab-btn.fs-btn.exit .win::after{
+      content:"";
+      position:absolute;
+      inset: 2px;
+      border: 2px solid currentColor;
+      border-radius: 1px;
+      opacity:.7;
+    }
+    .tab-btn[hidden]{
+      display:none !important;
+    }
+    .tab-btn[aria-selected="true"]{
+      background: var(--header);
+      color:#fff;
+      border-color: var(--header);
+      box-shadow: 0 12px 24px rgba(20,68,121,.24);
+    }
+
+    .panel{
+      background: var(--panel);
+      border: 1px solid var(--divider);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head{
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--divider);
+      background: linear-gradient(180deg, rgba(20,68,121,.04), rgba(20,68,121,0));
+    }
+    .panel-head .title{
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+    .panel-head .sub{
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .table-wrap{
+      overflow:auto;
+      background:#fff;
+      cursor: grab;
+      touch-action: pan-x pan-y;
+      user-select: none;
+    }
+    .table-wrap.dragging{
+      cursor: grabbing;
+    }
+
+    .rosen-table{
+      width: max-content;
+      min-width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background:#fff;
+    }
+    .rosen-table th,
+    .rosen-table td{
+      border-right: 1px solid rgba(0,0,0,.06);
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      padding: 0;
+      vertical-align: middle;
+    }
+    .rosen-table tr:last-child td,
+    .rosen-table tr:last-child th{
+      border-bottom: 0;
+    }
+    .rosen-table th:last-child,
+    .rosen-table td:last-child{
+      border-right: 0;
+    }
+    .rosen-sticky{
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background: #f7fafc;
+      min-width: 118px;
+      max-width: 118px;
+    }
+    .rosen-meta-label{
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+      letter-spacing: .03em;
+    }
+    .rosen-train-meta{
+      min-width: 76px;
+      width: 76px;
+      text-align: center;
+      background:#fff;
+      padding: 8px 4px;
+    }
+    .rosen-type{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width: 100%;
+      min-height: 32px;
+      padding: 4px 6px;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+    .rosen-meta-text{
+      display:block;
+      width:100%;
+      padding: 8px 4px;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.25;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .rosen-meta-text.no{
+      font-size: 12px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    .rosen-meta-text.dest{
+      font-size: 11px;
+    }
+    .rosen-meta-trainbtn{
+      appearance:none;
+      border:0;
+      background:transparent;
+      width:100%;
+      padding:0;
+      color:inherit;
+      font:inherit;
+      cursor:pointer;
+    }
+    .rosen-meta-trainbtn:hover .rosen-meta-text{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+    .rosen-station-cell{
+      background: #f7fafc;
+      min-width: 118px;
+      max-width: 118px;
+    }
+    .rosen-note-sticky{
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align:center;
+      letter-spacing: .18em;
+      justify-content: center;
+    }
+    .rosen-stname{
+      appearance:none;
+      border:0;
+      background:transparent;
+      width:100%;
+      padding: 10px 8px;
+      text-align:left;
+      cursor:pointer;
+      color:var(--text);
+      display:grid;
+      gap:4px;
+    }
+    .rosen-stname:hover .name{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+    .rosen-stname .code{
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 900;
+      line-height: 1;
+    }
+    .rosen-stname .name{
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.15;
+      word-break: keep-all;
+    }
+    .rosen-timecell{
+      min-width: 76px;
+      width: 76px;
+      background:#fff;
+    }
+    .rosen-timebtn{
+      appearance:none;
+      width:100%;
+      min-height: 56px;
+      border:0;
+      background:transparent;
+      cursor:pointer;
+      padding: 6px 4px;
+      display:grid;
+      align-content:center;
+      gap:2px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .rosen-timebtn.pass{
+      justify-items:center;
+    }
+    .rosen-timebtn:hover{
+      background: rgba(57,158,146,.08);
+    }
+    .rosen-timebtn.pass:hover{
+      background: rgba(20,68,121,.06);
+    }
+    .rosen-timebtn .time-line,
+    .rosen-timebtn .passonly{
+      display:block;
+      width:100%;
+    }
+    .rosen-timebtn .time-line{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      min-height: 1.15em;
+      line-height: 1.05;
+      letter-spacing: .02em;
+    }
+    .rosen-timebtn .val{
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .rosen-timebtn .time-line.arr .val{
+      color:#7f8b97;
+      font-size: 12px;
+    }
+    .rosen-timebtn .time-line.dep .val{
+      color: var(--header);
+    }
+    .rosen-timebtn .passonly{
+      color:#7a4a1e;
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.05;
+      text-align:center;
+    }
+    .rosen-note-cell{
+      min-width: 76px;
+      width: 76px;
+      background: linear-gradient(180deg, rgba(243,245,248,.82), rgba(255,255,255,.95));
+      height: 140px;
+      vertical-align: top;
+    }
+    .rosen-note-text{
+      width: 100%;
+      height: 100%;
+      padding: 10px 6px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-size: 11px;
+      line-height: 1.35;
+      color: var(--muted);
+      font-weight: 800;
+      overflow: hidden;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+    .rosen-empty{
+      min-width: 76px;
+      width:76px;
+      height: 56px;
+      background:
+        linear-gradient(135deg, rgba(243,245,248,.78), rgba(255,255,255,.95));
+    }
+
+    .note{
+      padding: 14px 16px 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .loading{
+      padding: 26px 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.45);
+      display:none;
+      z-index:80;
+    }
+    .modal{
+      position:fixed;
+      inset:0;
+      display:none;
+      z-index:90;
+      align-items:center;
+      justify-content:center;
+      padding: 16px;
+    }
+    .modal.show{ display:flex; }
+    .modal-backdrop.show{ display:block; }
+    .modal-card{
+      width: min(820px, 100%);
+      max-height: min(84svh, 900px);
+      overflow:auto;
+      border-radius: 16px;
+      background:#fff;
+      border: 1px solid rgba(0,0,0,.12);
+      box-shadow: 0 24px 70px rgba(0,0,0,.30);
+    }
+    .modal-head{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#fff;
+      border-bottom: 1px solid var(--divider);
+      padding: 10px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modal-nav{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .modal-back,
+    .modal-close,
+    .modal-print{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      background: #f1f3f6;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight:900;
+      line-height: 1;
+      cursor:pointer;
+      flex: 0 0 auto;
+    }
+    .modal-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:0 0 auto;
+    }
+    .modal-back{
+      font-size: 20px;
+    }
+    .modal-close{
+      font-size: 22px;
+    }
+    .modal-print{
+      color: var(--header);
+      background: rgba(20,68,121,.08);
+      border-color: rgba(20,68,121,.18);
+      font-size: 13px;
+    }
+    .modal-back[hidden]{ display:none; }
+    .modal-title .main{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      font-weight:900;
+      font-size: 14px;
+    }
+    .modal-title .sub{
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight:700;
+      line-height: 1.4;
+    }
+    .modal-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 2px 16px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .modal-body{
+      padding: 12px;
+    }
+
+    .train-tt-wrap table,
+    .tt-table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      border:1px solid rgba(0,0,0,.10);
+      border-radius: 14px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .train-tt-wrap th,
+    .train-tt-wrap td,
+    .tt-table th,
+    .tt-table td{
+      text-align:left;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      font-size: 13px;
+      vertical-align: top;
+    }
+    .train-tt-wrap tr:last-child td,
+    .train-tt-wrap tr:last-child th,
+    .tt-table tr:last-child td,
+    .tt-table tr:last-child th{
+      border-bottom: 0;
+    }
+    .train-tt-wrap th,
+    .tt-table thead th{
+      background:#fff;
+      font-weight:900;
+      color: rgba(0,0,0,.74);
+      white-space: nowrap;
+    }
+    .tt-table th{
+      position: static !important;
+    }
+    .tt-table th.hour{
+      width: 64px;
+      text-align:center;
+      font-size: 14px;
+      color: var(--text);
+      border-right: 1px solid rgba(0,0,0,.08);
+      background: rgba(243,245,248,.55);
+    }
+    .stcell{
+      display:flex;
+      align-items:flex-start;
+      gap:4px;
+      min-width:0;
+    }
+    .stcell .code{
+      font-weight:900;
+      font-size: 11px;
+      color: var(--muted);
+      line-height:1.05;
+      white-space:nowrap;
+    }
+    .stcell .name{
+      font-weight:900;
+      font-size: 14px;
+      line-height:1.15;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 52vw;
+    }
+    .namebtn{
+      appearance:none;
+      border:0;
+      background:transparent;
+      padding:0;
+      margin:0;
+      font: inherit;
+      color: inherit;
+      text-align:left;
+      cursor:pointer;
+    }
+    .namebtn:hover{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+    .passnote{
+      color:#6b7b8a;
+      font-weight:900;
+      font-size: 11px;
+      line-height: 1.1;
+      display:inline-block;
+      margin-top: 2px;
+    }
+    .train-tt-wrap table{
+      table-layout: fixed;
+    }
+    .train-tt-wrap th:first-child,
+    .train-tt-wrap td:first-child{
+      width: 56%;
+      padding-right: 2px;
+    }
+    .train-tt-wrap th:nth-child(2),
+    .train-tt-wrap td:nth-child(2){
+      width: 48px;
+      padding-left: 2px;
+      padding-right: 4px;
+      text-align: center;
+    }
+    .train-tt-wrap th:nth-child(3),
+    .train-tt-wrap td:nth-child(3){
+      width: 102px;
+      padding-left: 4px;
+    }
+    .train-tt-wrap .stcell .code{
+      min-width: 30px;
+    }
+    .train-tt-wrap .stcell .name{
+      max-width: none;
+    }
+    .tt-time-stack{
+      display:grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 2px;
+      min-height: 40px;
+      align-items:center;
+      font-variant-numeric: tabular-nums;
+    }
+    .tt-time-stack .top,
+    .tt-time-stack .bottom{
+      display:block;
+      min-height: 1.2em;
+      line-height: 1.2;
+      font-weight: 900;
+    }
+    .tt-time-stack .top{
+      color: #7f8b97;
+      font-size: 12px;
+    }
+    .tt-time-stack .bottom{
+      color: var(--header);
+      font-size: 13px;
+    }
+    .tt-time-stack.pass .top{
+      color: #7a4a1e;
+    }
+    .tt-time-stack.pass .bottom{
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .tt-remark{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(0,0,0,.10);
+      border-radius: 12px;
+      background: rgba(243,245,248,.65);
+    }
+    .tt-remark .h{
+      font-weight: 900;
+      font-size: 12px;
+      color: rgba(0,0,0,.72);
+      margin-bottom: 6px;
+    }
+    .tt-remark .t{
+      font-weight: 800;
+      font-size: 13px;
+      color: rgba(0,0,0,.86);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .tt-tabs{
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--divider);
+      display:flex;
+      gap:8px;
+      background:#fff;
+      position: sticky;
+      top: 52px;
+      z-index: 1;
+    }
+    .tt-tab{
+      flex:1 1 0;
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 10px;
+      font-weight: 900;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    .tt-tab[aria-selected="true"]{
+      border-color: rgba(57,158,146,.35);
+      box-shadow: 0 0 0 3px rgba(57,158,146,.18);
+    }
+    .tt-tab .badge{
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+    .tt-body{ padding: 10px 12px 12px; }
+    .tt-minwrap{
+      display:flex;
+      flex-wrap:wrap;
+      gap:4px 6px;
+      align-items:flex-start;
+    }
+    .tt-min.origin .m{
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 2px;
+    }
+    .tt-min{
+      display:inline-flex;
+      align-items:flex-start;
+      gap:1px;
+      padding:2px 6px;
+      border-radius:0;
+      border:0;
+      background:transparent;
+      line-height:1.1;
+      font-variant-numeric: tabular-nums;
+      white-space:nowrap;
+      cursor:pointer;
+    }
+    .tt-min .m{
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--c, rgba(0,0,0,.82));
+    }
+    .tt-min .dest{
+      font-size: 11px;
+      font-weight: 900;
+      margin-top: 3px;
+      color: var(--c, rgba(0,0,0,.82));
+    }
+    .tt-min .ptype{
+      display:none;
+    }
+    .tt-min.dim .m,
+    .tt-min.dim .dest{
+      color: var(--dimText) !important;
+    }
+    .tt-legend{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      display:flex;
+      flex-direction: column;
+      gap:8px;
+      align-items:flex-start;
+    }
+    .tt-legend .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px 10px;
+      align-items:center;
+    }
+    .tt-typechip{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.12);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 900;
+      font-size: 11px;
+      cursor: pointer;
+      line-height: 1.1;
+      white-space: nowrap;
+      background:#fff;
+      color: rgba(0,0,0,.82);
+    }
+    .tt-typechip.on{ box-shadow: 0 0 0 3px rgba(57,158,146,.16); }
+    .tt-typechip.dim{
+      background: var(--dimBg);
+      border-color: var(--dimBorder);
+      color: var(--dimText);
+    }
+    .tt-destitem{
+      display:inline-flex;
+      align-items:center;
+      gap:2px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .tt-destitem .abbr{
+      color: var(--text);
+    }
+
+    @media (max-width: 640px){
+      #btnEnterFullscreen,
+      #btnExitFullscreen{
+        display:none !important;
+      }
+      main{
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+      .hero{
+        border-radius: 14px;
+        padding: 18px 14px 14px;
+      }
+      .panel{
+        border-radius: 14px;
+      }
+      .rosen-sticky,
+      .rosen-station-cell{
+        min-width: 98px;
+        max-width: 98px;
+      }
+      .rosen-train-meta,
+      .rosen-timecell,
+      .rosen-empty,
+      .rosen-note-cell{
+        min-width: 66px;
+        width: 66px;
+      }
+      .rosen-timebtn{
+        min-height: 50px;
+      }
+      .rosen-timebtn .val,
+      .rosen-timebtn .passonly{
+        font-size: 12px;
+      }
+      .rosen-timebtn .time-line.arr .val{
+        font-size: 11px;
+      }
+      .rosen-stname .name{
+        font-size: 13px;
+      }
+      .rosen-note-text{
+        font-size: 10px;
+        padding: 8px 4px;
+      }
+      .modal-card{
+        width: 100%;
+        max-height: 90svh;
+      }
+    }
+    @media (min-width: 720px){
+      #trainModal .modal-card{
+        width: min(560px, 100%);
+        max-height: min(90svh, 1100px);
+      }
+      #trainModal .modal-body{
+        padding: 10px;
+      }
+      #trainModal .train-tt-wrap th,
+      #trainModal .train-tt-wrap td{
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+    }
+
+    button,
+    a.tab-btn,
+    .meta-pill,
+    [role="button"]{
+      border-radius: 0 !important;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1 id="pageTitle">架空鉄道路線時刻表</h1>
+      <p>上り・下りを切り替えて、冊子型の路線時刻表を表示します。時刻を押すと列車時刻表、駅名を押すと駅時刻表を開けます。</p>
+      <div class="meta-row" id="metaRow">
+        <span class="meta-pill">データを読み込み中…</span>
+      </div>
+    </section>
+
+    <div class="tabs">
+      <div class="route-tabs" role="tablist" aria-label="曜日種別切替">
+        <button class="tab-btn" id="dayTabMonThu" type="button" role="tab" aria-selected="false">月〜木</button>
+        <button class="tab-btn" id="dayTabFriday" type="button" role="tab" aria-selected="false">金曜</button>
+        <button class="tab-btn" id="dayTabHoliday" type="button" role="tab" aria-selected="false">土休日</button>
+      </div>
+      <div class="route-tabs" role="tablist" aria-label="上り下り切替">
+        <button class="tab-btn" id="dirTabUp" type="button" role="tab" aria-selected="true" aria-controls="dirPanelUp">上り路線時刻表</button>
+        <button class="tab-btn" id="dirTabDown" type="button" role="tab" aria-selected="false" aria-controls="dirPanelDown">下り路線時刻表</button>
+      </div>
+      <div class="page-links" aria-label="表示切替">
+        <a class="tab-btn" href="index.html" id="linkPosition">列車走行位置</a>
+        <a class="tab-btn" href="diagram.html" id="linkDiagram">ダイヤグラム</a>
+        <a class="tab-btn help-link" href="help.html" aria-label="ヘルプ">?</a>
+        <button class="tab-btn fs-btn enter" id="btnEnterFullscreen" type="button" aria-label="全画面表示"><span class="win" aria-hidden="true"></span></button>
+        <button class="tab-btn fs-btn exit" id="btnExitFullscreen" type="button" aria-label="全画面表示を解除" hidden><span class="win" aria-hidden="true"></span></button>
+      </div>
+    </div>
+
+    <section class="panel" id="dirPanelUp" role="tabpanel" aria-labelledby="dirTabUp">
+      <div class="panel-head">
+        <div class="title" id="upPanelTitle">上り路線時刻表</div>
+        <div class="sub">左端の駅名を押すと駅時刻表、表内の時刻を押すと列車時刻表を表示します。</div>
+      </div>
+      <div class="table-wrap" id="upWrap">
+        <div class="loading">上り時刻表を読み込み中です…</div>
+      </div>
+    </section>
+
+    <section class="panel" id="dirPanelDown" role="tabpanel" aria-labelledby="dirTabDown" hidden>
+      <div class="panel-head">
+        <div class="title" id="downPanelTitle">下り路線時刻表</div>
+        <div class="sub">左端の駅名を押すと駅時刻表、表内の時刻を押すと列車時刻表を表示します。</div>
+      </div>
+      <div class="table-wrap" id="downWrap">
+        <div class="loading">下り時刻表を読み込み中です…</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+
+  <div class="modal" id="trainModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="列車時刻表">
+      <div class="modal-head">
+        <div class="modal-nav">
+          <button class="modal-back" id="trainModalBack" type="button" hidden>←</button>
+          <div class="modal-title" id="trainModalTitle"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-print" id="trainModalPrint" type="button">印刷</button>
+          <button class="modal-close" id="trainModalClose" type="button">×</button>
+        </div>
+      </div>
+      <div class="modal-body" id="trainModalBody"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="stationModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="駅時刻表">
+      <div class="modal-head">
+        <div class="modal-nav">
+          <button class="modal-back" id="stationModalBack" type="button" hidden>←</button>
+          <div class="modal-title" id="stationModalTitle"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-print" id="stationModalPrint" type="button">印刷</button>
+          <button class="modal-close" id="stationModalClose" type="button">×</button>
+        </div>
+      </div>
+      <div class="tt-tabs" role="tablist" aria-label="駅時刻表の上下切替">
+        <button class="tt-tab" id="ttTabUp" type="button" role="tab" aria-selected="true" aria-controls="ttPanelUp">上り <span class="badge" id="ttCountUp">--</span></button>
+        <button class="tt-tab" id="ttTabDown" type="button" role="tab" aria-selected="false" aria-controls="ttPanelDown">下り <span class="badge" id="ttCountDown">--</span></button>
+      </div>
+      <div class="tt-body">
+        <section id="ttPanelUp" role="tabpanel" aria-labelledby="ttTabUp"></section>
+        <section id="ttPanelDown" role="tabpanel" aria-labelledby="ttTabDown" hidden></section>
+        <div class="tt-legend">
+          <div class="row">種別を押すと列車を強調表示します</div>
+          <div class="row" id="ttTypeLegend"></div>
+          <div class="row" id="ttDestLegend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SITE_CONFIG_CSV = "view_select.csv";
+    const DEFAULT_SITE_CONFIG = {
+      config_mode: "basic",
+      line_name: "架鉄本線",
+      line_short_name: "本線",
+      operator_name: "架空の鉄道",
+      train_position_page_name: "列車走行位置",
+      diagram_page_name: "ダイヤグラム",
+      route_timetable_page_name: "路線時刻表",
+      route_timetable_meta_visible: "false",
+      csv_mon_thu_up: "honsen_nobori.csv",
+      csv_mon_thu_down: "honsen_kudari.csv",
+      csv_friday_up: "honsen_fri_nobori.csv",
+      csv_friday_down: "honsen_fri_kudari.csv",
+      csv_sat_holiday_up: "honsen_holi_nobori.csv",
+      csv_sat_holiday_down: "honsen_holi_kudari.csv",
+      station_start_name: "海土路",
+      line_color: "#303030",
+    };
+    let siteConfig = {...DEFAULT_SITE_CONFIG};
+    const SIMPLE_CONFIG_KEYS = new Set([
+      "config_mode",
+    ]);
+
+    const CSV_BY_DAY = {
+      mon_thu:     { up: "honsen_nobori.csv", down: "honsen_kudari.csv" },
+      friday:      { up: "honsen_nobori.csv", down: "honsen_kudari.csv" },
+      sat_holiday: { up: "honsen_nobori.csv", down: "honsen_kudari.csv" },
+    };
+
+    const DEFAULT_TYPE_COLOR = {
+      "特急": "#164190",
+      "空特": "#47BCB9",
+      "空快": "#3695D4",
+      "空Ｐ": "#CA175E",
+      "快速": "#E99313",
+      "各停": "#393636",
+      "各停◆": "#393636",
+      "金曜": "#6B3174",
+      "鯉電": "#E10A15",
+    };
+    const TYPE_COLOR = {...DEFAULT_TYPE_COLOR};
+
+    const DEFAULT_DEST_INITIALS = {
+      "新糸崎": "新糸",
+      "広島空港": "広空",
+      "新本郷": "本郷",
+      "船木": "船木",
+      "長谷": "長谷",
+      "灘急西条": "灘条",
+      "広島地下": "地下",
+      "灘急本通": "本通",
+      "北山": "北山",
+      "灘急宮島口": "灘宮",
+      "灘急岩国": "灘岩",
+      "海土路": "海路",
+      "岩国空港": "岩空",
+      "津和野": "津野",
+      "灘急川尻": "灘尻",
+    };
+    const DEST_INITIALS = {...DEFAULT_DEST_INITIALS};
+
+    const COL_STNO = 0;
+    const COL_LABEL = 1;
+    const COL_KIND = 2;
+    const FIRST_TRAIN_COL = 3;
+    const ROW_REMARK = 1;
+    const ROW_CARS = 3;
+    const ROW_TRAINNO = 4;
+    const ROW_TYPE = 6;
+    const ROW_NAME = 7;
+    const ROW_GOSU = 8;
+    const ROW_GO = 9;
+    const ROW_ORIGIN = 10;
+    const ROW_START = 12;
+    const ROW_DEST = 14;
+    const ROW_END = 16;
+
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const metaRow = document.getElementById("metaRow");
+    const dayTabMonThu = document.getElementById("dayTabMonThu");
+    const dayTabFriday = document.getElementById("dayTabFriday");
+    const dayTabHoliday = document.getElementById("dayTabHoliday");
+    const dirTabUp = document.getElementById("dirTabUp");
+    const dirTabDown = document.getElementById("dirTabDown");
+    const dirPanelUp = document.getElementById("dirPanelUp");
+    const dirPanelDown = document.getElementById("dirPanelDown");
+    const upWrap = document.getElementById("upWrap");
+    const downWrap = document.getElementById("downWrap");
+
+    const trainModal = document.getElementById("trainModal");
+    const trainModalBack = document.getElementById("trainModalBack");
+    const trainModalClose = document.getElementById("trainModalClose");
+    const trainModalPrint = document.getElementById("trainModalPrint");
+    const trainModalTitle = document.getElementById("trainModalTitle");
+    const trainModalBody = document.getElementById("trainModalBody");
+
+    const stationModal = document.getElementById("stationModal");
+    const stationModalBack = document.getElementById("stationModalBack");
+    const stationModalClose = document.getElementById("stationModalClose");
+    const stationModalPrint = document.getElementById("stationModalPrint");
+    const stationModalTitle = document.getElementById("stationModalTitle");
+    const ttTabUp = document.getElementById("ttTabUp");
+    const ttTabDown = document.getElementById("ttTabDown");
+    const ttPanelUp = document.getElementById("ttPanelUp");
+    const ttPanelDown = document.getElementById("ttPanelDown");
+    const ttCountUp = document.getElementById("ttCountUp");
+    const ttCountDown = document.getElementById("ttCountDown");
+    const btnEnterFullscreen = document.getElementById("btnEnterFullscreen");
+    const btnExitFullscreen = document.getElementById("btnExitFullscreen");
+
+    function isSimpleConfigMode(){
+      const mode = String(siteConfig.config_mode ?? DEFAULT_SITE_CONFIG.config_mode ?? "").trim().toLowerCase();
+      return mode === "simple" || mode === "簡易" || mode === "簡易モード";
+    }
+    function configText(key){
+      if(isSimpleConfigMode() && !SIMPLE_CONFIG_KEYS.has(key)){
+        return String(DEFAULT_SITE_CONFIG[key] ?? "");
+      }
+      return String(siteConfig[key] ?? DEFAULT_SITE_CONFIG[key] ?? "");
+    }
+    function configBool(key){
+      const v = configText(key).trim().toLowerCase();
+      return !(v === "false" || v === "0" || v === "no" || v === "非表示" || v === "hide");
+    }
+    function configColor(key, fallback){
+      const v = configText(key).trim();
+      return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+    }
+
+    function applyCsvFileConfig(){
+      CSV_BY_DAY.mon_thu.up = configText("csv_mon_thu_up").trim() || CSV_BY_DAY.mon_thu.up;
+      CSV_BY_DAY.mon_thu.down = configText("csv_mon_thu_down").trim() || CSV_BY_DAY.mon_thu.down;
+      CSV_BY_DAY.friday.up = configText("csv_friday_up").trim() || CSV_BY_DAY.friday.up;
+      CSV_BY_DAY.friday.down = configText("csv_friday_down").trim() || CSV_BY_DAY.friday.down;
+      CSV_BY_DAY.sat_holiday.up = configText("csv_sat_holiday_up").trim() || CSV_BY_DAY.sat_holiday.up;
+      CSV_BY_DAY.sat_holiday.down = configText("csv_sat_holiday_down").trim() || CSV_BY_DAY.sat_holiday.down;
+    }
+
+    function applyTypeAndDestinationConfig(){
+      Object.keys(TYPE_COLOR).forEach(key => delete TYPE_COLOR[key]);
+      Object.assign(TYPE_COLOR, DEFAULT_TYPE_COLOR);
+      Object.keys(DEST_INITIALS).forEach(key => delete DEST_INITIALS[key]);
+      Object.assign(DEST_INITIALS, DEFAULT_DEST_INITIALS);
+      for(const [key, value] of Object.entries(siteConfig)){
+        if(isSimpleConfigMode() && !SIMPLE_CONFIG_KEYS.has(key)) continue;
+        const v = String(value ?? "").trim();
+        if(!v) continue;
+        if(key.startsWith("type_color_") && /^#[0-9a-fA-F]{6}$/.test(v)){
+          TYPE_COLOR[key.slice("type_color_".length)] = v;
+        }
+        if(key.startsWith("dest_initial_")){
+          DEST_INITIALS[key.slice("dest_initial_".length)] = v;
+        }
+      }
+    }
+
+    function applyDataConfig(){
+      applyCsvFileConfig();
+      applyTypeAndDestinationConfig();
+    }
+
+    async function loadSiteConfig(){
+      try{
+        const r = await fetch(`${SITE_CONFIG_CSV}?ts=${Date.now()}`, {cache:"no-store"});
+        if(!r.ok) throw new Error(`設定CSVの読み込み失敗: ${r.status}`);
+        const rows = parseCSV(await r.text());
+        const next = {...DEFAULT_SITE_CONFIG};
+        for(const row of rows){
+          const key = String(row[0] ?? "").replace(/^\uFEFF/, "").trim();
+          if(!key || key === "key" || key.startsWith("#")) continue;
+          next[key] = String(row[1] ?? "").trim();
+        }
+        siteConfig = next;
+      }
+      catch(e){
+        console.warn(e);
+        siteConfig = {...DEFAULT_SITE_CONFIG};
+      }
+      applySiteConfig();
+    }
+
+    function applySiteConfig(){
+      applyDataConfig();
+      const lineName = configText("line_name");
+      const routeName = configText("route_timetable_page_name");
+      document.title = `${lineName} ${routeName}`;
+      document.getElementById("pageTitle").textContent = `${lineName} ${routeName}`;
+      dirTabUp.textContent = `上り${routeName}`;
+      dirTabDown.textContent = `下り${routeName}`;
+      document.getElementById("upPanelTitle").textContent = `上り${routeName}`;
+      document.getElementById("downPanelTitle").textContent = `下り${routeName}`;
+      document.getElementById("linkPosition").textContent = configText("train_position_page_name");
+      document.getElementById("linkDiagram").textContent = configText("diagram_page_name");
+      metaRow.hidden = !configBool("route_timetable_meta_visible");
+    }
+    function openPrintView(titleText, contentHtml){
+      const html = `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(titleText)}</title>
+  <style>
+    body{ margin:0; color:#111; background:#fff; font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; line-height:1.45; }
+    .toolbar{ position:sticky; top:0; display:flex; gap:8px; justify-content:flex-end; padding:10px; background:#f1f3f6; border-bottom:1px solid #ccc; z-index:10; }
+    .toolbar button{ border:1px solid #888; background:#fff; padding:8px 12px; font-weight:900; cursor:pointer; }
+    .print-brand{ margin:0 0 6px; color:#444; font-size:13px; font-weight:900; }
+    main{ padding:18px; }
+    h1{ margin:0 0 12px; font-size:22px; line-height:1.25; }
+    .modal-title .main{ font-size:18px; font-weight:900; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .modal-title .sub{ margin-top:4px; color:#444; font-size:12px; font-weight:700; }
+    .tt-tabs,.tt-legend{ margin:10px 0; display:flex; gap:8px; flex-wrap:wrap; }
+    .tt-tab,.tt-typechip{ border:1px solid #aaa; background:#fff; color:#111; padding:5px 8px; font-weight:900; }
+    [hidden]{ display:none !important; }
+    table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
+    tr{ page-break-inside:avoid; }
+    th,td{ border:1px solid #777; padding:6px 8px; font-size:12px; vertical-align:top; }
+    th{ background:#f2f2f2; font-weight:900; }
+    button{ font:inherit; color:inherit; border:0; background:transparent; padding:0; text-align:inherit; }
+    .modal-back,.modal-close,.modal-print{ display:none !important; }
+    .modal-badge,.rosen-type{ display:inline-block; padding:2px 8px; font-weight:900; }
+    .tt-min{ display:inline-block; margin:1px 4px 1px 0; white-space:nowrap; }
+    .tt-min .m,.tt-min .dest{ color:var(--c, #111); }
+    .tt-min .ptype{ display:block; margin-top:1px; font-size:8px; line-height:1; color:#555; font-weight:800; }
+    .tt-remark{ margin-top:12px; border:1px solid #777; padding:8px; }
+    @media print{ .toolbar{ display:none; } main{ padding:0; } @page{ margin:12mm; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">印刷</button><button onclick="window.close()">閉じる</button></div>
+  <main><div class="print-brand">${escapeHtml(configText("operator_name"))}　${escapeHtml(configText("line_name"))}</div><h1>${escapeHtml(titleText)}</h1>${contentHtml}</main>
+</body>
+</html>`;
+      const url = URL.createObjectURL(new Blob([html], {type:"text/html"}));
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      return;
+      const win = window.open("", "_blank");
+      if(!win){
+        alert("印刷用タブを開けませんでした。ポップアップ設定を確認してください。");
+        return;
+      }
+      win.document.open();
+      win.document.write(`<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(titleText)}</title>
+  <style>
+    body{ margin:0; color:#111; background:#fff; font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; line-height:1.45; }
+    .toolbar{ position:sticky; top:0; display:flex; gap:8px; justify-content:flex-end; padding:10px; background:#f1f3f6; border-bottom:1px solid #ccc; z-index:10; }
+    .toolbar button{ border:1px solid #888; background:#fff; padding:8px 12px; font-weight:900; cursor:pointer; }
+    .print-brand{ margin:0 0 6px; color:#444; font-size:13px; font-weight:900; }
+    main{ padding:18px; }
+    h1{ margin:0 0 12px; font-size:22px; line-height:1.25; }
+    .modal-title .main{ font-size:18px; font-weight:900; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .modal-title .sub{ margin-top:4px; color:#444; font-size:12px; font-weight:700; }
+    .tt-tabs,.tt-legend{ margin:10px 0; display:flex; gap:8px; flex-wrap:wrap; }
+    .tt-tab,.tt-typechip{ border:1px solid #aaa; background:#fff; color:#111; padding:5px 8px; font-weight:900; }
+    [hidden]{ display:none !important; }
+    table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
+    tr{ page-break-inside:avoid; }
+    th,td{ border:1px solid #777; padding:6px 8px; font-size:12px; vertical-align:top; }
+    th{ background:#f2f2f2; font-weight:900; }
+    button{ font:inherit; color:inherit; border:0; background:transparent; padding:0; text-align:inherit; }
+    .modal-back,.modal-close,.modal-print{ display:none !important; }
+    .modal-badge,.rosen-type{ display:inline-block; padding:2px 8px; font-weight:900; }
+    .tt-min{ display:inline-block; margin:1px 4px 1px 0; white-space:nowrap; }
+    .tt-min .m,.tt-min .dest{ color:var(--c, #111); }
+    .tt-remark{ margin-top:12px; border:1px solid #777; padding:8px; }
+    @media print{
+      .toolbar{ display:none; }
+      main{ padding:0; }
+      @page{ margin:12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">印刷</button><button onclick="window.close()">閉じる</button></div>
+  <main><div class="print-brand">${escapeHtml(configText("operator_name"))}　${escapeHtml(configText("line_name"))}</div><h1>${escapeHtml(titleText)}</h1>${contentHtml}</main>
+</body>
+</html>`);
+      win.document.close();
+    }
+    const ttTypeLegend = document.getElementById("ttTypeLegend");
+    const ttDestLegend = document.getElementById("ttDestLegend");
+
+    let scheduleUp = null;
+    let scheduleDown = null;
+    let stationTypeFilters = new Set();
+    let modalBackState = null;
+    let currentDayKey = getDayKey(new Date());
+
+    const ROUTE_TABLE_START_ABS = 4 * 3600;
+    const ROUTE_TABLE_END_ABS = 28 * 3600;
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+
+    function escapeHtml(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function formatDateKey(date){
+      return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+    }
+
+    function addDays(date, days){
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function sameDate(a, b){
+      return a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+    }
+
+    function nthMonday(year, monthIndex, nth){
+      const d = new Date(year, monthIndex, 1);
+      const offset = (8 - d.getDay()) % 7;
+      return 1 + offset + (nth - 1) * 7;
+    }
+
+    function vernalEquinoxDay(year){
+      return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+
+    function autumnEquinoxDay(year){
+      return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+
+    function baseJapaneseHolidayName(date){
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      if(month === 1 && day === 1) return "元日";
+      if(month === 1 && day === nthMonday(year, 0, 2)) return "成人の日";
+      if(month === 2 && day === 11) return "建国記念の日";
+      if(month === 2 && day === 23) return "天皇誕生日";
+      if(month === 3 && day === vernalEquinoxDay(year)) return "春分の日";
+      if(month === 4 && day === 29) return "昭和の日";
+      if(month === 5 && day === 3) return "憲法記念日";
+      if(month === 5 && day === 4) return "みどりの日";
+      if(month === 5 && day === 5) return "こどもの日";
+      if(month === 7 && day === nthMonday(year, 6, 3)) return "海の日";
+      if(month === 8 && day === 11) return "山の日";
+      if(month === 9 && day === nthMonday(year, 8, 3)) return "敬老の日";
+      if(month === 9 && day === autumnEquinoxDay(year)) return "秋分の日";
+      if(month === 10 && day === nthMonday(year, 9, 2)) return "スポーツの日";
+      if(month === 11 && day === 3) return "文化の日";
+      if(month === 11 && day === 23) return "勤労感謝の日";
+      return "";
+    }
+
+    function isJapaneseHolidayCore(date){
+      if(baseJapaneseHolidayName(date)) return true;
+      for(let back=1; back<=7; back++){
+        const prev = addDays(date, -back);
+        if(!baseJapaneseHolidayName(prev)) continue;
+        if(prev.getDay() !== 0) continue;
+        let substitute = addDays(prev, 1);
+        while(baseJapaneseHolidayName(substitute)){
+          substitute = addDays(substitute, 1);
+        }
+        return sameDate(substitute, date);
+      }
+      return false;
+    }
+
+    function isJapaneseHoliday(date){
+      if(isJapaneseHolidayCore(date)) return true;
+      const dow = date.getDay();
+      if(dow === 0 || dow === 6) return false;
+      return isJapaneseHolidayCore(addDays(date, -1)) && isJapaneseHolidayCore(addDays(date, 1));
+    }
+
+    function getDayKey(date){
+      const day = date.getDay();
+      if(isJapaneseHoliday(date) || day === 0 || day === 6) return "sat_holiday";
+      if(day === 5) return "friday";
+      return "mon_thu";
+    }
+    function getDayLabel(dayKey){
+      if(dayKey === "friday") return "金曜";
+      if(dayKey === "sat_holiday") return "土休日";
+      return "月〜木";
+    }
+    function syncDayTabs(){
+      dayTabMonThu.setAttribute("aria-selected", String(currentDayKey === "mon_thu"));
+      dayTabFriday.setAttribute("aria-selected", String(currentDayKey === "friday"));
+      dayTabHoliday.setAttribute("aria-selected", String(currentDayKey === "sat_holiday"));
+    }
+
+    function typeColor(type){
+      return TYPE_COLOR[String(type ?? "").trim()] || configColor("line_color", "#506070");
+    }
+
+    function idealTextColor(hex){
+      const h = (hex || "").replace("#","");
+      if(h.length !== 6) return "#fff";
+      const r = parseInt(h.slice(0,2),16);
+      const g = parseInt(h.slice(2,4),16);
+      const b = parseInt(h.slice(4,6),16);
+      const y = (r*299 + g*587 + b*114)/1000;
+      return (y >= 160) ? "#000" : "#fff";
+    }
+
+    function getDestInitial(destName){
+      const s = String(destName ?? "").trim();
+      if(!s) return "";
+      return DEST_INITIALS[s] || s.slice(0,1);
+    }
+
+    function secToHHMM(sec){
+      if(sec == null) return "";
+      const day = 86400;
+      const t = ((Math.floor(sec) % day) + day) % day;
+      return `${pad2(Math.floor(t / 3600))}:${pad2(Math.floor((t % 3600) / 60))}`;
+    }
+
+    function secToCompactHHMM(sec){
+      return secToHHMM(sec).replace(":", "");
+    }
+
+    function secToRouteDisplayHHMM(sec){
+      if(sec == null) return "";
+      const t = Math.max(0, Math.floor(sec));
+      const hh = Math.floor(t / 3600);
+      const mm = Math.floor((t % 3600) / 60);
+      return `${pad2(hh)}:${pad2(mm)}`;
+    }
+
+    function secToRouteDisplayCompactHHMM(sec){
+      return secToRouteDisplayHHMM(sec).replace(":", "");
+    }
+
+    function isRouteTableAbsInRange(sec){
+      return sec != null && sec >= ROUTE_TABLE_START_ABS && sec < ROUTE_TABLE_END_ABS;
+    }
+
+    function trainHasRouteTableTime(train){
+      if(!train?.stops?.length) return false;
+      return train.stops.some(stop =>
+        isRouteTableAbsInRange(stop.arrAbs)
+        || isRouteTableAbsInRange(stop.depAbs)
+        || isRouteTableAbsInRange(stop.passAbs)
+      );
+    }
+
+    function isMainBranchNoServiceStation(station){
+      const code = String(station?.code ?? "").trim();
+      return /^IA\d{1,2}$/.test(code);
+    }
+
+    function shouldShowImplicitNoService(train, station){
+      if(!isMainBranchNoServiceStation(station)) return false;
+      const indexedStops = (train?.stops || []).filter(s => Number.isFinite(s.stationIdx) && !s.noService);
+      if(!indexedStops.length || !Number.isFinite(station?.idx)) return false;
+      const idxs = indexedStops.map(s => s.stationIdx);
+      const minIdx = Math.min(...idxs);
+      const maxIdx = Math.max(...idxs);
+      return station.idx >= minIdx && station.idx <= maxIdx;
+    }
+
+    function parseCSV(text){
+      const rows = [];
+      let row = [], cur = "", inQuotes = false;
+      for(let i=0;i<text.length;i++){
+        const ch = text[i], next = text[i+1];
+        if(inQuotes){
+          if(ch === '"' && next === '"'){ cur += '"'; i++; }
+          else if(ch === '"'){ inQuotes = false; }
+          else cur += ch;
+          continue;
+        }
+        if(ch === '"') inQuotes = true;
+        else if(ch === ","){ row.push(cur); cur = ""; }
+        else if(ch === "\r"){ }
+        else if(ch === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+        else cur += ch;
+      }
+      if(cur.length || row.length){ row.push(cur); rows.push(row); }
+      return rows;
+    }
+
+    function parseTimeField(v){
+      if(v == null) return {sec:null, isPass:false, isNoService:false};
+      let s = String(v).trim();
+      if(!s) return {sec:null, isPass:false, isNoService:false};
+      if(s === "||") return {sec:null, isPass:false, isNoService:true};
+      const isPass = s.endsWith("?");
+      s = s.replace(/\?/g, "").replace(/\s+/g, "");
+      if(!/^\d+$/.test(s)) return {sec:null, isPass, isNoService:false};
+      if(s.length > 6) s = s.slice(-6);
+      s = s.padStart(6, "0");
+      const hh = Number(s.slice(0,2));
+      const mm = Number(s.slice(2,4));
+      const ss = Number(s.slice(4,6));
+      if([hh,mm,ss].some(Number.isNaN)) return {sec:null, isPass, isNoService:false};
+      return {sec: hh*3600 + mm*60 + ss, isPass, isNoService:false};
+    }
+
+    function alignAbsAroundRef(sec, refAbs){
+      if(sec == null || refAbs == null) return null;
+      const day = 86400;
+      let abs = sec;
+      while(abs - refAbs > 43200) abs -= day;
+      while(refAbs - abs > 43200) abs += day;
+      return abs;
+    }
+
+    function extractStationsFromUpCsv(csvText){
+      const rows = parseCSV(csvText).map(r => r.map(c => String(c ?? "").trim()));
+      const startName = configText("station_start_name").trim() || "海土路";
+      const isStationRow = (r) => {
+        const name = (r[COL_LABEL] ?? "").trim();
+        const kind = (r[COL_KIND] ?? "").trim();
+        return !!name && (kind === "着" || kind === "発" || kind === "番線");
+      };
+      let startRow = rows.findIndex(r => (r[COL_LABEL] ?? "").trim() === startName && isStationRow(r));
+      if(startRow < 0) startRow = rows.findIndex(isStationRow);
+      if(startRow < 0) throw new Error("駅リストを抽出できる行が見つかりません。");
+
+      const list = [];
+      for(let i=startRow;i<rows.length;i++){
+        const code = (rows[i][COL_STNO] ?? "").trim();
+        const name = (rows[i][COL_LABEL] ?? "").trim();
+        const kind = (rows[i][COL_KIND] ?? "").trim();
+        if(!name) continue;
+        if(!(kind === "着" || kind === "発" || kind === "番線")) continue;
+        list.push({ code, name });
+      }
+
+      const seen = new Set();
+      return list.filter(st => {
+        if(seen.has(st.name)) return false;
+        seen.add(st.name);
+        return true;
+      }).map((st, i) => ({
+        idx: i,
+        code: st.code || `${String(i+1).padStart(2, "0")}`,
+        name: st.name,
+      }));
+    }
+
+    function buildStopsFromDefs(rows, col, defs){
+      const stops = [];
+      for(const st of defs){
+        const arr = pickFirstTimeField(rows, st.arrRows, col);
+        const dep = pickFirstTimeField(rows, st.depRows, col);
+        if(arr.sec == null && dep.sec == null && !arr.isNoService && !dep.isNoService) continue;
+
+        let arrSec = arr.sec;
+        let depSec = dep.sec;
+        let passSec = null;
+        const noService = !!(arr.isNoService || dep.isNoService);
+        if(arr.isPass || dep.isPass){
+          passSec = (arr.sec ?? dep.sec);
+          arrSec = null;
+          depSec = null;
+        }
+
+        stops.push({
+          stationIdx: Number.isFinite(st.stationIdx) ? st.stationIdx : null,
+          stationName: st.name,
+          code: st.code,
+          track: pickFirstTrackValue(rows, st.trackRows, col),
+          noService,
+          arrSec, depSec, passSec,
+          arrAbs:null, depAbs:null, passAbs:null,
+        });
+      }
+      return stops;
+    }
+
+    function pickFirstTimeField(rows, rowIndexes, col){
+      for(const rowIdx of (rowIndexes || [])){
+        const parsed = parseTimeField(rows[rowIdx]?.[col] ?? "");
+        if(parsed.sec != null || parsed.isPass || parsed.isNoService) return parsed;
+      }
+      return {sec:null, isPass:false, isNoService:false};
+    }
+
+    function pickFirstTrackValue(rows, rowIndexes, col){
+      for(const rowIdx of (rowIndexes || [])){
+        const v = String(rows[rowIdx]?.[col] ?? "").trim();
+        if(v && v !== "||") return v;
+      }
+      return "";
+    }
+
+    function normalizeStopsByOrder(stops, refAbs = null){
+      if(refAbs != null){
+        for(const s of stops){
+          s.arrAbs = (s.arrSec != null) ? alignAbsAroundRef(s.arrSec, refAbs) : null;
+          s.depAbs = (s.depSec != null) ? alignAbsAroundRef(s.depSec, refAbs) : null;
+          s.passAbs = (s.passSec != null) ? alignAbsAroundRef(s.passSec, refAbs) : null;
+        }
+      }else{
+        const day = 86400;
+        let dayOffset = 0;
+        let lastAbs = null;
+        for(const s of stops){
+          if(s.arrSec != null){
+            let abs = s.arrSec + dayOffset * day;
+            while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.arrSec + dayOffset * day; }
+            s.arrAbs = abs;
+            lastAbs = abs;
+          }
+          if(s.depSec != null){
+            let abs = s.depSec + dayOffset * day;
+            while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.depSec + dayOffset * day; }
+            s.depAbs = abs;
+            lastAbs = abs;
+          }
+          if(s.passSec != null){
+            let abs = s.passSec + dayOffset * day;
+            while(lastAbs != null && abs + 2 < lastAbs){ dayOffset++; abs = s.passSec + dayOffset * day; }
+            s.passAbs = abs;
+            lastAbs = abs;
+          }
+        }
+      }
+
+      stops.sort((a,b)=>{
+        const ta = (a.depAbs ?? a.arrAbs ?? a.passAbs ?? 1e18);
+        const tb = (b.depAbs ?? b.arrAbs ?? b.passAbs ?? 1e18);
+        return ta - tb;
+      });
+    }
+
+    function normalizeMidnight(train){
+      const day = 86400;
+      const ordered = [...train.stops].sort((a,b)=>{
+        const ai = Number.isFinite(a.stationIdx) ? a.stationIdx : -1;
+        const bi = Number.isFinite(b.stationIdx) ? b.stationIdx : -1;
+        return train.dir === "down" ? (bi - ai) : (ai - bi);
+      });
+      normalizeStopsByOrder(ordered);
+      const lastAbsRaw = ordered[ordered.length-1]?.arrAbs ?? ordered[ordered.length-1]?.depAbs ?? ordered[ordered.length-1]?.passAbs ?? null;
+      if(lastAbsRaw != null && lastAbsRaw < 10800){
+        for(const stop of ordered){
+          if(stop.arrAbs != null) stop.arrAbs += day;
+          if(stop.depAbs != null) stop.depAbs += day;
+          if(stop.passAbs != null) stop.passAbs += day;
+        }
+      }
+      train.stops = ordered;
+      train.firstAbs = ordered[0]?.depAbs ?? ordered[0]?.arrAbs ?? ordered[0]?.passAbs ?? null;
+      const last = ordered[ordered.length-1];
+      train.lastAbs = last?.arrAbs ?? last?.depAbs ?? last?.passAbs ?? null;
+    }
+
+    function parseScheduleWithRefStations(csvText, dir, sourceName, refStations){
+      const rows = parseCSV(csvText).map(r => r.map(c => String(c ?? "").trim()));
+      const stationRowMap = new Map();
+      for(const st of refStations){
+        stationRowMap.set(st.name, {arrRows:[], depRows:[], trackRows:[]});
+      }
+
+      let lastStationName = "";
+      for(let i=0;i<rows.length;i++){
+        const rawName = (rows[i][COL_LABEL] ?? "").trim();
+        const kind = (rows[i][COL_KIND] ?? "").trim();
+        const stName = rawName || ((kind === "着" || kind === "発" || kind === "番線") ? lastStationName : "");
+        if(!stName || !stationRowMap.has(stName)) continue;
+        lastStationName = stName;
+        const obj = stationRowMap.get(stName);
+        if(kind === "着") obj.arrRows.push(i);
+        if(kind === "発") obj.depRows.push(i);
+        if(kind === "番線") obj.trackRows.push(i);
+      }
+
+      const defs = refStations.map(st => {
+        const map = stationRowMap.get(st.name) || {};
+        return {
+          code: st.code,
+          name: st.name,
+          stationIdx: st.idx,
+          arrRows: map.arrRows ?? [],
+          depRows: map.depRows ?? [],
+          trackRows: map.trackRows ?? [],
+        };
+      });
+
+      const maxCols = Math.max(...rows.map(r => r.length));
+      const trainCols = [];
+      for(let c=FIRST_TRAIN_COL;c<maxCols;c++){
+        const no = (rows[ROW_TRAINNO]?.[c] ?? "").trim();
+        if(no) trainCols.push(c);
+      }
+
+      const trains = trainCols.map(c => {
+        const trainNo = (rows[ROW_TRAINNO]?.[c] ?? "").trim();
+        const stops = buildStopsFromDefs(rows, c, defs);
+        const train = {
+          dir,
+          trainId: `${sourceName}:${dir}:col${c}:${trainNo || "NONO"}`,
+          trainNo,
+          type: (rows[ROW_TYPE]?.[c] ?? "").trim(),
+          name: (rows[ROW_NAME]?.[c] ?? "").trim(),
+          dest: (rows[ROW_DEST]?.[c] ?? "").trim(),
+          origin: (rows[ROW_ORIGIN]?.[c] ?? "").trim(),
+          cars: (rows[ROW_CARS]?.[c] ?? "").trim(),
+          zPart: (rows[ROW_GOSU]?.[c] ?? "").trim(),
+          yPart: (rows[ROW_GO]?.[c] ?? "").trim(),
+          remark: (rows[ROW_REMARK]?.[c] ?? "").trim(),
+          serviceStartSec: parseTimeField(rows[ROW_START]?.[c] ?? "").sec,
+          serviceEndSec: parseTimeField(rows[ROW_END]?.[c] ?? "").sec,
+          serviceStartAbs: null,
+          serviceEndAbs: null,
+          stops,
+          firstAbs: null,
+          lastAbs: null,
+        };
+
+        normalizeMidnight(train);
+        if(train.serviceStartSec != null && train.firstAbs != null){
+          train.serviceStartAbs = alignAbsAroundRef(train.serviceStartSec, train.firstAbs);
+        }
+        if(train.serviceEndSec != null && train.lastAbs != null){
+          train.serviceEndAbs = alignAbsAroundRef(train.serviceEndSec, train.lastAbs);
+        }
+        return train;
+      });
+
+      trains.sort((a,b)=>{
+        const ta = a.firstAbs ?? 1e15;
+        const tb = b.firstAbs ?? 1e15;
+        if(ta !== tb) return ta - tb;
+        return String(a.trainNo).localeCompare(String(b.trainNo), "ja");
+      });
+
+      return { direction: dir, stations: refStations, trains };
+    }
+
+    function findTrainById(trainId){
+      return scheduleUp?.trains?.find(t => t.trainId === trainId)
+        ?? scheduleDown?.trains?.find(t => t.trainId === trainId)
+        ?? null;
+    }
+
+    function trainDestFallback(train){
+      const d = String(train.dest ?? "").trim();
+      if(d) return d;
+      return train.stops?.[train.stops.length - 1]?.stationName || "";
+    }
+
+    function trainOriginFallback(train){
+      const o = String(train.origin ?? "").trim();
+      if(o) return o;
+      return train.stops?.[0]?.stationName || "";
+    }
+
+    function trainNameWithGo(train){
+      const parts = [];
+      const name = String(train?.name ?? "").trim();
+      const z = String(train?.zPart ?? "").trim();
+      const y = String(train?.yPart ?? "").trim();
+      if(name) parts.push(name);
+      if(z && y && !DEFAULT_TYPE_COLOR[z]){
+        parts.push(`${z}${y}`);
+      }
+      return parts.join(" ") || "—";
+    }
+
+    function getVisibleRemarkText(train){
+      const rawRemark = String(train?.remark ?? "").trim();
+      if(!rawRemark.endsWith("?")) return "";
+      return rawRemark.slice(0, -1).trim();
+    }
+
+    function normalizeStationRef(stationRef){
+      if(typeof stationRef === "number"){
+        return { stationIdx: stationRef, code: "", name: "" };
+      }
+      if(stationRef && typeof stationRef === "object"){
+        return {
+          stationIdx: Number.isFinite(stationRef.stationIdx) ? stationRef.stationIdx : null,
+          code: String(stationRef.code ?? "").trim(),
+          name: String(stationRef.name ?? "").trim(),
+        };
+      }
+      return { stationIdx: null, code: "", name: "" };
+    }
+
+    function stationRefKey(stationRef){
+      const ref = normalizeStationRef(stationRef);
+      if(Number.isFinite(ref.stationIdx)) return `idx:${ref.stationIdx}`;
+      if(ref.code) return `code:${ref.code}`;
+      if(ref.name) return `name:${ref.name}`;
+      return "";
+    }
+
+    function readStationIdxValue(v){
+      const s = String(v ?? "").trim();
+      if(!s) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function stationRefMatchesStop(stationRef, stop){
+      const ref = normalizeStationRef(stationRef);
+      if(!stop) return false;
+      if(Number.isFinite(ref.stationIdx) && Number.isFinite(stop.stationIdx) && ref.stationIdx === stop.stationIdx) return true;
+      if(ref.code && String(stop.code ?? "").trim() === ref.code) return true;
+      if(ref.name && String(stop.stationName ?? "").trim() === ref.name) return true;
+      return false;
+    }
+
+    function resolveStationRefInfo(stationRef){
+      const ref = normalizeStationRef(stationRef);
+      if(Number.isFinite(ref.stationIdx)){
+        const st = scheduleUp?.stations?.find(x => x.idx === ref.stationIdx) || scheduleDown?.stations?.find(x => x.idx === ref.stationIdx);
+        if(st) return { stationIdx: st.idx, code: st.code, name: st.name };
+      }
+
+      const trains = [...(scheduleUp?.trains || []), ...(scheduleDown?.trains || [])];
+      for(const train of trains){
+        const stop = train.stops.find(s => stationRefMatchesStop(ref, s));
+        if(stop){
+          return {
+            stationIdx: Number.isFinite(stop.stationIdx) ? stop.stationIdx : null,
+            code: String(stop.code ?? ref.code).trim(),
+            name: String(stop.stationName ?? ref.name).trim(),
+          };
+        }
+      }
+      return ref;
+    }
+
+    function collectDeparturesForStation(trains, stationRef){
+      const refInfo = resolveStationRefInfo(stationRef);
+      const refName = String(refInfo?.name ?? "").trim();
+      const out = [];
+
+      for(const train of (trains || [])){
+        const stop = train.stops.find(s => stationRefMatchesStop(refInfo, s));
+        if(!stop) continue;
+        if(stop.depAbs == null || stop.passAbs != null) continue;
+
+        const timeAbs = stop.depAbs;
+        const hh = Math.floor(((timeAbs % 86400) + 86400) % 86400 / 3600);
+        const mm = Math.floor((((timeAbs % 86400) + 86400) % 86400) % 3600 / 60);
+        const dest = trainDestFallback(train);
+        const firstStop = train.stops[0] || null;
+        const isOrigin = (refName && String(train.origin ?? "").trim() === refName)
+          || (!!firstStop && stationRefMatchesStop(refInfo, firstStop));
+
+        out.push({
+          abs: timeAbs,
+          h: hh,
+          m: mm,
+          type: String(train.type ?? "").trim(),
+          dest,
+          destInitial: getDestInitial(dest),
+          trainNo: String(train.trainNo ?? "").trim(),
+          cars: String(train.cars ?? "").trim(),
+          noteText: getVisibleRemarkText(train),
+          isOrigin,
+          trainId: train.trainId,
+        });
+      }
+
+      out.sort((a,b)=> (a.abs - b.abs) || String(a.trainNo).localeCompare(String(b.trainNo), "ja"));
+      return out;
+    }
+
+    function sortHoursFromStart(hours, startHour){
+      const uniq = [...new Set(hours)].filter(h => Number.isFinite(h)).map(Number);
+      uniq.sort((a,b)=>{
+        const aa = (a - startHour + 24) % 24;
+        const bb = (b - startHour + 24) % 24;
+        return aa - bb;
+      });
+      return uniq;
+    }
+
+    function buildStationTtHtml(list, label){
+      if(!list.length){
+        return `<div class="loading">${escapeHtml(label)}の時刻表データがありません</div>`;
+      }
+
+      const byHour = new Map();
+      for(const it of list){
+        if(!byHour.has(it.h)) byHour.set(it.h, []);
+        byHour.get(it.h).push(it);
+      }
+
+      const hours = sortHoursFromStart([...byHour.keys()], 4);
+      let rows = "";
+
+      for(const h of hours){
+        const mins = (byHour.get(h) || []).map(it => {
+          const color = typeColor(it.type);
+          return `
+            <span class="tt-min ${it.isOrigin ? "origin" : ""}" data-type="${escapeHtml(it.type)}" data-trainid="${escapeHtml(it.trainId)}" style="--c:${escapeHtml(color)}">
+              <span class="m">${pad2(it.m)}</span>
+              <span class="dest">${escapeHtml(it.destInitial)}</span>
+              <span class="ptype">${escapeHtml(it.type || "種別")}</span>
+            </span>
+          `;
+        }).join("");
+
+        rows += `
+          <tr>
+            <th class="hour" scope="row">${pad2(h)}</th>
+            <td><div class="tt-minwrap">${mins}</div></td>
+          </tr>
+        `;
+      }
+
+      return `
+        <table class="tt-table" aria-label="${escapeHtml(label)}の発車時刻表">
+          <thead>
+            <tr>
+              <th class="hour" scope="col">時</th>
+              <th scope="col">分（右上：行先頭文字）</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function renderTypeLegendFromLists(...lists){
+      const set = new Set();
+      for(const list of lists){
+        for(const it of (list || [])){
+          const t = String(it?.type ?? "").trim();
+          if(t) set.add(t);
+        }
+      }
+      const types = [...set];
+      if(!types.length){
+        ttTypeLegend.innerHTML = "";
+        return;
+      }
+
+      ttTypeLegend.innerHTML = types.map(t => {
+        const c = typeColor(t);
+        const txt = idealTextColor(c);
+        return `<button type="button" class="tt-typechip" data-type="${escapeHtml(t)}" style="background:${escapeHtml(c)}; border-color:${escapeHtml(c)}; color:${escapeHtml(txt)};">${escapeHtml(t)}</button>`;
+      }).join("");
+
+      ttTypeLegend.querySelectorAll(".tt-typechip").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const t = String(btn.dataset.type ?? "").trim();
+          if(stationTypeFilters.has(t)) stationTypeFilters.delete(t);
+          else stationTypeFilters.add(t);
+          applyStationTypeFilterVisuals();
+        });
+      });
+
+      applyStationTypeFilterVisuals();
+    }
+
+    function renderDestLegendFromLists(...lists){
+      const pairs = new Map();
+      for(const list of lists){
+        for(const it of (list || [])){
+          const abbr = String(it?.destInitial ?? "").trim();
+          const dest = String(it?.dest ?? "").trim();
+          if(abbr && dest && !pairs.has(abbr)) pairs.set(abbr, dest);
+        }
+      }
+
+      ttDestLegend.innerHTML = [...pairs.entries()].map(([abbr, dest]) =>
+        `<span class="tt-destitem"><span class="abbr">${escapeHtml(abbr)}</span><span>：${escapeHtml(dest)}</span></span>`
+      ).join("");
+    }
+
+    function applyStationTypeFilterVisuals(){
+      stationModal.querySelectorAll(".tt-min").forEach(el => {
+        const t = String(el.dataset.type ?? "").trim();
+        const hasFilter = stationTypeFilters.size > 0;
+        const dim = hasFilter && !stationTypeFilters.has(t);
+        el.classList.toggle("dim", !!dim);
+      });
+
+      ttTypeLegend.querySelectorAll(".tt-typechip").forEach(btn => {
+        const t = String(btn.dataset.type ?? "").trim();
+        const hasFilter = stationTypeFilters.size > 0;
+        const isOn = stationTypeFilters.has(t);
+        const isDim = hasFilter && !isOn;
+        btn.classList.toggle("on", isOn);
+        btn.classList.toggle("dim", isDim);
+        if(isDim){
+          btn.style.background = "var(--dimBg)";
+          btn.style.borderColor = "var(--dimBorder)";
+          btn.style.color = "var(--dimText)";
+        }else{
+          const c = typeColor(t);
+          btn.style.background = c;
+          btn.style.borderColor = c;
+          btn.style.color = idealTextColor(c);
+        }
+      });
+    }
+
+    function setStationTab(dir){
+      const isUp = dir === "up";
+      ttTabUp.setAttribute("aria-selected", String(isUp));
+      ttTabDown.setAttribute("aria-selected", String(!isUp));
+      ttPanelUp.hidden = !isUp;
+      ttPanelDown.hidden = isUp;
+    }
+
+    function showBackdrop(){ modalBackdrop.classList.add("show"); }
+    function hideBackdrop(){ modalBackdrop.classList.remove("show"); }
+    function syncFullscreenButtons(){
+      const active = !!document.fullscreenElement;
+      btnEnterFullscreen.hidden = active;
+      btnExitFullscreen.hidden = !active;
+    }
+    async function enterFullscreenMode(){
+      try{
+        await document.documentElement.requestFullscreen();
+      }catch(e){
+        alert("全画面表示にできませんでした。");
+      }
+    }
+    async function exitFullscreenMode(){
+      try{
+        if(document.fullscreenElement) await document.exitFullscreen();
+      }catch(e){
+        alert("全画面表示を解除できませんでした。");
+      }
+    }
+
+    function closeAllModals(){
+      trainModal.classList.remove("show");
+      stationModal.classList.remove("show");
+      trainModalBack.hidden = true;
+      stationModalBack.hidden = true;
+      modalBackState = null;
+      hideBackdrop();
+    }
+
+    function openModalForTrain(train, focusStationIdx = null, backState = null){
+      const dest = trainDestFallback(train);
+      const origin = trainOriginFallback(train) || "—";
+      const color = typeColor(train.type);
+      const textColor = idealTextColor(color);
+      const rawRemark = String(train.remark ?? "").trim();
+      const remarkText = rawRemark.endsWith("?") ? rawRemark.slice(0, -1).trim() : "ー";
+
+      trainModalTitle.innerHTML = `
+        <div class="main">
+          <span class="modal-badge" style="background:${escapeHtml(color)}; color:${escapeHtml(textColor)};">${escapeHtml(train.type || "種別")}</span>
+          <span>列車 ${escapeHtml(train.trainNo || "—")} ${escapeHtml(train.name ? `/ ${train.name}` : "")}</span>
+        </div>
+        <div class="sub">${escapeHtml(origin)} → ${escapeHtml(dest || "—")}</div>
+      `;
+
+      const modalStops = train.stops.filter(s => !s.noService);
+      const firstModalStop = modalStops[0] || null;
+      const lastModalStop = modalStops[modalStops.length - 1] || null;
+      let renderedStops = modalStops;
+      if(origin && train.serviceStartAbs != null && (!firstModalStop || String(firstModalStop.stationName ?? "").trim() !== origin)){
+        renderedStops = [{
+          stationIdx: null,
+          stationName: origin,
+          code: "",
+          track: "",
+          arrAbs: null,
+          depAbs: train.serviceStartAbs,
+          passAbs: null,
+          hasPass: false,
+          syntheticOrigin: true,
+        }, ...renderedStops];
+      }
+      if(dest && train.serviceEndAbs != null && (!lastModalStop || String(lastModalStop.stationName ?? "").trim() !== dest)){
+        renderedStops = [...renderedStops, {
+          stationIdx: null,
+          stationName: dest,
+          code: "",
+          track: "",
+          arrAbs: train.serviceEndAbs,
+          depAbs: null,
+          passAbs: null,
+          hasPass: false,
+          syntheticDestination: true,
+        }];
+      }
+      const rows = renderedStops.map(s => {
+        let timeStackClass = "tt-time-stack";
+        let topText = "";
+        let bottomText = "";
+        if(s.passAbs != null){
+          timeStackClass += " pass";
+          topText = secToHHMM(s.passAbs);
+          bottomText = "(通過)";
+        }else if(s.arrAbs != null && s.depAbs != null){
+          topText = secToHHMM(s.arrAbs);
+          bottomText = secToHHMM(s.depAbs);
+        }else if(s.depAbs != null){
+          topText = "";
+          bottomText = secToHHMM(s.depAbs);
+        }else if(s.arrAbs != null){
+          topText = secToHHMM(s.arrAbs);
+          bottomText = "";
+        }
+
+        return `
+          <tr${Number.isFinite(s.stationIdx) ? ` data-stidx="${s.stationIdx}"` : ""}>
+            <td>
+              <div class="stcell">
+                <div>
+                  <div class="code">${escapeHtml(s.code)}</div>
+                  <button class="name namebtn" type="button" data-role="trainStationName"
+                    ${Number.isFinite(s.stationIdx) ? `data-stidx="${s.stationIdx}"` : ""}
+                    data-stcode="${escapeHtml(s.code)}"
+                    data-stname="${escapeHtml(s.stationName)}"
+                    ${(s.syntheticOrigin || s.syntheticDestination) ? "disabled" : ""}>${escapeHtml(s.stationName)}</button>
+                </div>
+              </div>
+            </td>
+            <td>${escapeHtml(s.track || "")}</td>
+            <td>
+              <div class="${timeStackClass}">
+                <span class="top">${escapeHtml(topText)}</span>
+                <span class="bottom">${escapeHtml(bottomText)}</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      trainModalBody.innerHTML = `
+        <div class="train-tt-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>駅</th>
+                <th style="width:90px;">番線</th>
+                <th style="width:112px;">時刻</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="tt-remark">
+            <div class="h">備考</div>
+            <div class="t">${escapeHtml(remarkText || "ー")}</div>
+          </div>
+        </div>
+      `;
+
+      stationModal.classList.remove("show");
+      trainModal.classList.add("show");
+      showBackdrop();
+      modalBackState = backState;
+      trainModalBack.hidden = !backState;
+      stationModalBack.hidden = true;
+
+      if(Number.isFinite(focusStationIdx)){
+        requestAnimationFrame(() => {
+          const tr = trainModalBody.querySelector(`tr[data-stidx="${focusStationIdx}"]`);
+          if(tr) tr.scrollIntoView({block:"center", inline:"nearest"});
+        });
+      }
+
+      trainModalBody.querySelectorAll('[data-role="trainStationName"]').forEach(btn => {
+        btn.addEventListener("click", () => {
+          const stIdx = readStationIdxValue(btn.dataset.stidx);
+          openStationTimetable({
+            stationIdx: Number.isFinite(stIdx) ? stIdx : null,
+            code: String(btn.dataset.stcode ?? ""),
+            name: String(btn.dataset.stname ?? ""),
+          }, {
+            type: "train",
+            trainId: train.trainId,
+            focusStationIdx: Number.isFinite(stIdx) ? stIdx : null,
+          });
+        });
+      });
+    }
+
+    function openTrainFromStationChip(trainId, stationRef){
+      const train = findTrainById(trainId);
+      if(!train) return;
+      const st = resolveStationRefInfo(stationRef);
+      openModalForTrain(train, Number.isFinite(st.stationIdx) ? st.stationIdx : null, {
+        type: "station",
+        stRef: st,
+      });
+    }
+
+    function openStationTimetable(stationRef, backState = null){
+      const st = resolveStationRefInfo(stationRef);
+      stationTypeFilters = new Set();
+      stationModal.dataset.openStationIdx = Number.isFinite(st.stationIdx) ? String(st.stationIdx) : "";
+      stationModal.dataset.openStationCode = st.code || "";
+      stationModal.dataset.openStationName = st.name || "";
+
+      const upList = collectDeparturesForStation(scheduleUp?.trains || [], st);
+      const downList = collectDeparturesForStation(scheduleDown?.trains || [], st);
+
+      stationModalTitle.innerHTML = `
+        <div class="main">駅時刻表：${escapeHtml(st.name || "駅")} <span style="color:var(--muted); font-weight:900;">${escapeHtml(st.code || "")}</span></div>
+        <div class="sub">発車時刻を押すと列車時刻表が表示されます</div>
+      `;
+      ttCountUp.textContent = `(${upList.length}本)`;
+      ttCountDown.textContent = `(${downList.length}本)`;
+      ttPanelUp.innerHTML = buildStationTtHtml(upList, "上り");
+      ttPanelDown.innerHTML = buildStationTtHtml(downList, "下り");
+      renderTypeLegendFromLists(upList, downList);
+      renderDestLegendFromLists(upList, downList);
+      setStationTab("up");
+
+      trainModal.classList.remove("show");
+      stationModal.classList.add("show");
+      showBackdrop();
+      modalBackState = backState;
+      stationModalBack.hidden = !backState;
+      trainModalBack.hidden = true;
+    }
+
+    function goBackModal(){
+      const backState = modalBackState;
+      if(!backState) return;
+      modalBackState = null;
+      trainModalBack.hidden = true;
+      stationModalBack.hidden = true;
+
+      if(backState.type === "station"){
+        openStationTimetable(backState.stRef ?? null, null);
+        return;
+      }
+      if(backState.type === "train"){
+        const train = findTrainById(backState.trainId);
+        if(train){
+          openModalForTrain(train, backState.focusStationIdx ?? null, null);
+        }
+      }
+    }
+
+    function buildRouteTimetableTable(schedule, dirLabel){
+      const trains = schedule.trains.filter(trainHasRouteTableTime);
+      const stationList = schedule.direction === "down"
+        ? [...schedule.stations].reverse()
+        : schedule.stations;
+      const headerRows = `
+        <thead>
+          <tr>
+            <th class="rosen-sticky rosen-meta-label">種別</th>
+            ${trains.map(train => {
+              const c = typeColor(train.type);
+              const txt = idealTextColor(c);
+              return `<th class="rosen-train-meta"><span class="rosen-type" style="background:${escapeHtml(c)}; color:${escapeHtml(txt)};">${escapeHtml(train.type || "種別")}</span></th>`;
+            }).join("")}
+          </tr>
+          <tr>
+            <th class="rosen-sticky rosen-meta-label">列車番号</th>
+            ${trains.map(train => `<th class="rosen-train-meta"><span class="rosen-meta-text no">${escapeHtml(train.trainNo || "—")}</span></th>`).join("")}
+          </tr>
+          <tr>
+            <th class="rosen-sticky rosen-meta-label">列車名</th>
+            ${trains.map(train => `<th class="rosen-train-meta"><span class="rosen-meta-text">${escapeHtml(trainNameWithGo(train))}</span></th>`).join("")}
+          </tr>
+          <tr>
+            <th class="rosen-sticky rosen-meta-label">行先</th>
+            ${trains.map(train => `<th class="rosen-train-meta"><span class="rosen-meta-text dest">${escapeHtml(trainDestFallback(train) || "—")}</span></th>`).join("")}
+          </tr>
+          <tr>
+            <th class="rosen-sticky rosen-meta-label">始発駅</th>
+            ${trains.map(train => {
+              const origin = trainOriginFallback(train) || "—";
+              const focusStop = train.stops.find(s => !s.noService) || null;
+              const focusIdx = focusStop?.stationIdx;
+              return `<th class="rosen-train-meta">
+                <button class="rosen-meta-trainbtn" type="button" data-role="openTrain" data-trainid="${escapeHtml(train.trainId)}" ${Number.isFinite(focusIdx) ? `data-stidx="${escapeHtml(String(focusIdx))}"` : ""}>
+                  <span class="rosen-meta-text dest">${escapeHtml(origin)}</span>
+                </button>
+              </th>`;
+            }).join("")}
+          </tr>
+        </thead>
+      `;
+
+      const stationRows = stationList.map(st => {
+        const cells = trains.map(train => {
+          const stop = train.stops.find(s => s.stationIdx === st.idx);
+          if(!stop){
+            if(shouldShowImplicitNoService(train, st)){
+              return `
+                <td class="rosen-timecell">
+                  <div class="rosen-timebtn pass" aria-label="経由なし">
+                    <span class="passonly">||</span>
+                  </div>
+                </td>
+              `;
+            }
+            return `<td class="rosen-empty"></td>`;
+          }
+
+          if(stop.noService){
+            return `
+              <td class="rosen-timecell">
+                <div class="rosen-timebtn pass" aria-label="経由なし">
+                  <span class="passonly">||</span>
+                </div>
+              </td>
+            `;
+          }
+
+          const inRangePass = isRouteTableAbsInRange(stop.passAbs);
+          const inRangeArr = isRouteTableAbsInRange(stop.arrAbs);
+          const inRangeDep = isRouteTableAbsInRange(stop.depAbs);
+          if(!inRangePass && !inRangeArr && !inRangeDep) return `<td class="rosen-empty"></td>`;
+
+          let content = "";
+          let passClass = "";
+          if(inRangePass){
+            passClass = " pass";
+            content = `<span class="passonly">レ</span>`;
+          }else if(inRangeArr && inRangeDep){
+            content = `
+              <span class="time-line arr"><span class="val">${escapeHtml(secToRouteDisplayHHMM(stop.arrAbs))}着</span></span>
+              <span class="time-line dep"><span class="val">${escapeHtml(secToRouteDisplayHHMM(stop.depAbs))}発</span></span>
+            `;
+          }else if(inRangeDep){
+            content = `
+              <span class="time-line arr"><span class="val"></span></span>
+              <span class="time-line dep"><span class="val">${escapeHtml(secToRouteDisplayHHMM(stop.depAbs))}発</span></span>
+            `;
+          }else if(inRangeArr){
+            content = `
+              <span class="time-line arr"><span class="val">${escapeHtml(secToRouteDisplayHHMM(stop.arrAbs))}着</span></span>
+              <span class="time-line dep"><span class="val"></span></span>
+            `;
+          }else{
+            return `<td class="rosen-empty"></td>`;
+          }
+
+          return `
+            <td class="rosen-timecell">
+              <button class="rosen-timebtn${passClass}" type="button"
+                data-role="openTrain"
+                data-trainid="${escapeHtml(train.trainId)}"
+                data-stidx="${escapeHtml(String(st.idx))}">
+                ${content}
+              </button>
+            </td>
+          `;
+        }).join("");
+
+        return `
+          <tr>
+            <th class="rosen-sticky rosen-station-cell">
+              <button class="rosen-stname" type="button" data-role="openStation" data-stidx="${escapeHtml(String(st.idx))}" data-stcode="${escapeHtml(st.code)}" data-stname="${escapeHtml(st.name)}">
+                <span class="code">${escapeHtml(st.code)}</span>
+                <span class="name">${escapeHtml(st.name)}</span>
+              </button>
+            </th>
+            ${cells}
+          </tr>
+        `;
+      }).join("");
+
+      const noteRow = `
+        <tr>
+          <th class="rosen-sticky rosen-station-cell rosen-note-sticky">
+            <div class="rosen-meta-label">備考</div>
+          </th>
+          ${trains.map(train => {
+            const note = getVisibleRemarkText(train) || "—";
+            return `<td class="rosen-note-cell"><div class="rosen-note-text">${escapeHtml(note)}</div></td>`;
+          }).join("")}
+        </tr>
+      `;
+
+      return `<table class="rosen-table" aria-label="${escapeHtml(dirLabel)}${escapeHtml(configText("route_timetable_page_name"))}">${headerRows}<tbody>${stationRows}${noteRow}</tbody></table>`;
+    }
+
+    function bindRouteTableEvents(root){
+      root.addEventListener("click", (e) => {
+        const trainBtn = e.target.closest('[data-role="openTrain"]');
+        if(trainBtn){
+          const train = findTrainById(String(trainBtn.dataset.trainid ?? ""));
+          const stIdx = readStationIdxValue(trainBtn.dataset.stidx);
+          if(train) openModalForTrain(train, Number.isFinite(stIdx) ? stIdx : null, null);
+          return;
+        }
+
+        const stationBtn = e.target.closest('[data-role="openStation"]');
+        if(stationBtn){
+          const stIdx = readStationIdxValue(stationBtn.dataset.stidx);
+          openStationTimetable({
+            stationIdx: Number.isFinite(stIdx) ? stIdx : null,
+            code: String(stationBtn.dataset.stcode ?? ""),
+            name: String(stationBtn.dataset.stname ?? ""),
+          }, null);
+        }
+      });
+    }
+
+    function setDirectionTab(dir){
+      const isUp = dir === "up";
+      dirTabUp.setAttribute("aria-selected", String(isUp));
+      dirTabDown.setAttribute("aria-selected", String(!isUp));
+      dirPanelUp.hidden = !isUp;
+      dirPanelDown.hidden = isUp;
+    }
+
+    function enableDragScroll(el){
+      let active = false;
+      let startX = 0;
+      let startY = 0;
+      let startLeft = 0;
+      let startTop = 0;
+
+      el.addEventListener("pointerdown", (e) => {
+        if(e.pointerType === "mouse" && e.button !== 0) return;
+        if(e.target.closest("button, a, input, select, textarea, [role='button']")) return;
+        active = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = el.scrollLeft;
+        startTop = el.scrollTop;
+        el.classList.add("dragging");
+        el.setPointerCapture?.(e.pointerId);
+      });
+
+      el.addEventListener("pointermove", (e) => {
+        if(!active) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        el.scrollLeft = startLeft - dx;
+        el.scrollTop = startTop - dy;
+      });
+
+      const finish = (e) => {
+        if(!active) return;
+        active = false;
+        el.classList.remove("dragging");
+        if(e?.pointerId != null){
+          el.releasePointerCapture?.(e.pointerId);
+        }
+      };
+
+      el.addEventListener("pointerup", finish);
+      el.addEventListener("pointercancel", finish);
+      el.addEventListener("pointerleave", (e) => {
+        if(e.pointerType === "mouse") finish(e);
+      });
+    }
+
+    async function loadAll(dayKey = currentDayKey){
+      currentDayKey = dayKey;
+      syncDayTabs();
+      const csvUp = CSV_BY_DAY[dayKey]?.up;
+      const csvDown = CSV_BY_DAY[dayKey]?.down;
+      if(!csvUp || !csvDown) throw new Error("CSV設定が見つかりません。");
+
+      const bust = `?ts=${Date.now()}`;
+      const [upText, downText] = await Promise.all([
+        fetch(csvUp + bust, {cache:"no-store"}).then(r => {
+          if(!r.ok) throw new Error(`上りCSVの読み込み失敗: ${r.status}`);
+          return r.text();
+        }),
+        fetch(csvDown + bust, {cache:"no-store"}).then(r => {
+          if(!r.ok) throw new Error(`下りCSVの読み込み失敗: ${r.status}`);
+          return r.text();
+        }),
+      ]);
+
+      const refStations = extractStationsFromUpCsv(upText);
+      scheduleUp = parseScheduleWithRefStations(upText, "up", "UP", refStations);
+      scheduleDown = parseScheduleWithRefStations(downText, "down", "DOWN", refStations);
+
+      metaRow.innerHTML = [
+        `ダイヤ: ${getDayLabel(dayKey)}`,
+        `駅数: ${refStations.length}`,
+        `上り列車: ${scheduleUp.trains.length}`,
+        `下り列車: ${scheduleDown.trains.length}`,
+      ].map(text => `<span class="meta-pill">${escapeHtml(text)}</span>`).join("");
+      metaRow.hidden = !configBool("route_timetable_meta_visible");
+      upWrap.innerHTML = buildRouteTimetableTable(scheduleUp, "上り");
+      downWrap.innerHTML = buildRouteTimetableTable(scheduleDown, "下り");
+      enableDragScroll(upWrap);
+      enableDragScroll(downWrap);
+    }
+
+    dayTabMonThu.addEventListener("click", () => loadAll("mon_thu").catch(err => {
+      const msg = escapeHtml(err?.message || String(err));
+      upWrap.innerHTML = `<div class="loading">上り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+      downWrap.innerHTML = `<div class="loading">下り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+      console.error(err);
+    }));
+    dayTabFriday.addEventListener("click", () => loadAll("friday").catch(err => {
+      const msg = escapeHtml(err?.message || String(err));
+      upWrap.innerHTML = `<div class="loading">上り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+      downWrap.innerHTML = `<div class="loading">下り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+      console.error(err);
+    }));
+    dayTabHoliday.addEventListener("click", () => loadAll("sat_holiday").catch(err => {
+      const msg = escapeHtml(err?.message || String(err));
+      upWrap.innerHTML = `<div class="loading">上り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+      downWrap.innerHTML = `<div class="loading">下り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+      console.error(err);
+    }));
+    btnEnterFullscreen.addEventListener("click", enterFullscreenMode);
+    btnExitFullscreen.addEventListener("click", exitFullscreenMode);
+    document.addEventListener("fullscreenchange", syncFullscreenButtons);
+    dirTabUp.addEventListener("click", () => setDirectionTab("up"));
+    dirTabDown.addEventListener("click", () => setDirectionTab("down"));
+    ttTabUp.addEventListener("click", () => setStationTab("up"));
+    ttTabDown.addEventListener("click", () => setStationTab("down"));
+    modalBackdrop.addEventListener("click", closeAllModals);
+    trainModalClose.addEventListener("click", closeAllModals);
+    stationModalClose.addEventListener("click", closeAllModals);
+    trainModalPrint.addEventListener("click", () => {
+      const content = `<div class="modal-title">${trainModalTitle.innerHTML}</div>${trainModalBody.innerHTML}`;
+      openPrintView(trainModalTitle.textContent.trim() || "列車時刻表", content);
+    });
+    stationModalPrint.addEventListener("click", () => {
+      const content = `
+        <div class="modal-title">${stationModalTitle.querySelector(".main")?.outerHTML || stationModalTitle.innerHTML}</div>
+        ${stationModal.querySelector(".tt-body")?.outerHTML || ""}
+      `;
+      openPrintView(stationModalTitle.textContent.trim() || "駅時刻表", content);
+    });
+    trainModalBack.addEventListener("click", goBackModal);
+    stationModalBack.addEventListener("click", goBackModal);
+
+    stationModal.addEventListener("click", (e) => {
+      const chip = e.target.closest(".tt-min");
+      if(!chip) return;
+      openTrainFromStationChip(String(chip.dataset.trainid ?? ""), {
+        stationIdx: readStationIdxValue(stationModal.dataset.openStationIdx),
+        code: String(stationModal.dataset.openStationCode ?? ""),
+        name: String(stationModal.dataset.openStationName ?? ""),
+      });
+    });
+
+    bindRouteTableEvents(upWrap);
+    bindRouteTableEvents(downWrap);
+
+    (async function init(){
+      await loadSiteConfig();
+      currentDayKey = getDayKey(new Date());
+      syncFullscreenButtons();
+      syncDayTabs();
+      loadAll().catch(err => {
+        const msg = escapeHtml(err?.message || String(err));
+        upWrap.innerHTML = `<div class="loading">上り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+        downWrap.innerHTML = `<div class="loading">下り時刻表の読み込みに失敗しました。<br>${msg}</div>`;
+        metaRow.innerHTML = `<span class="meta-pill">読み込み失敗</span>`;
+        console.error(err);
+      });
+    })();
+  </script>
+</body>
+</html>

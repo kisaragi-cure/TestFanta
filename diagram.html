@@ -1,0 +1,1875 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>架空鉄道　ダイヤグラム</title>
+  <style>
+    :root{
+      --line:#399E92;
+      --header:#144479;
+      --bg:#eef3f8;
+      --panel:#ffffff;
+      --text:#17212b;
+      --muted:#6b7b8a;
+      --divider:rgba(0,0,0,.08);
+      --shadow:0 18px 40px rgba(0,0,0,.10);
+      --active:#144479;
+    }
+    *{ box-sizing:border-box; }
+    [hidden]{ display:none !important; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Segoe UI", Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(57,158,146,.12), transparent 34%),
+        linear-gradient(180deg, #f6f9fc 0%, #eaf0f6 100%);
+    }
+    main{
+      max-width: 1700px;
+      margin: 0 auto;
+      padding: 18px 12px 28px;
+    }
+    .hero{
+      padding: 20px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(20,68,121,.98), rgba(57,158,146,.92));
+      color:#fff;
+      box-shadow: var(--shadow);
+    }
+    .hero h1{
+      margin:0;
+      font-size: clamp(26px, 4vw, 40px);
+      line-height:1.08;
+      font-weight: 900;
+      letter-spacing:.02em;
+    }
+    .hero p{
+      margin:10px 0 0;
+      font-size:13px;
+      line-height:1.55;
+      color:rgba(255,255,255,.92);
+    }
+    .meta-row{
+      margin-top:12px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .meta-pill{
+      display:inline-flex;
+      align-items:center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .controls{
+      margin-top: 18px;
+      display:grid;
+      gap:10px;
+    }
+    .control-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .seg{
+      display:inline-flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .seg button,
+    .page-link,
+    .toolbtn,
+    .chip{
+      appearance:none;
+      border:1px solid rgba(20,68,121,.12);
+      background:#fff;
+      color:var(--muted);
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,.06);
+    }
+    .page-link{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      background: rgba(20,68,121,.10);
+      border-color: rgba(20,68,121,.28);
+      color: var(--header);
+    }
+    .page-link.help-link{
+      min-width: 44px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    .page-link.fs-btn{
+      min-width: 44px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    .page-link.fs-btn{
+      position: relative;
+      font-size: 0;
+    }
+    .page-link.fs-btn .win{
+      position: relative;
+      display:block;
+      width: 16px;
+      height: 12px;
+      margin: 0 auto;
+      border: 2px solid currentColor;
+      border-radius: 2px;
+    }
+    .page-link.fs-btn .win::before{
+      content:"";
+      position:absolute;
+      left:-2px;
+      right:-2px;
+      top:-2px;
+      height: 3px;
+      background: currentColor;
+      border-radius: 2px 2px 0 0;
+    }
+    .page-link.fs-btn.exit .win::after{
+      content:"";
+      position:absolute;
+      inset: 2px;
+      border: 2px solid currentColor;
+      border-radius: 1px;
+      opacity:.7;
+    }
+    .page-link[hidden]{
+      display:none !important;
+    }
+    .seg button[aria-selected="true"],
+    .toolbtn.on{
+      background: var(--header);
+      border-color: var(--header);
+      color:#fff;
+      box-shadow: 0 12px 24px rgba(20,68,121,.24);
+    }
+    .toolselect{
+      appearance:none;
+      border:1px solid rgba(20,68,121,.12);
+      background:#fff;
+      color:var(--text);
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-size: 14px;
+      font-weight: 900;
+      box-shadow: 0 8px 18px rgba(0,0,0,.06);
+    }
+    .toolbtn.ghost{
+      color: var(--text);
+    }
+    #btnReload{
+      background: rgba(57,158,146,.14);
+      border-color: rgba(57,158,146,.34);
+      color: var(--header);
+    }
+    #btnPrintDiagram{
+      background: rgba(20,68,121,.10);
+      border-color: rgba(20,68,121,.28);
+      color: var(--header);
+    }
+    .zoom-group{
+      display:inline-flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .zoom-label{
+      font-size:12px;
+      font-weight:900;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .panel{
+      margin-top: 14px;
+      background: var(--panel);
+      border: 1px solid var(--divider);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: visible;
+    }
+    .panel-head{
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--divider);
+      background: linear-gradient(180deg, rgba(20,68,121,.04), rgba(20,68,121,0));
+    }
+    .panel-head .title{
+      font-size: 18px;
+      font-weight: 900;
+      line-height:1.2;
+    }
+    .panel-head .sub{
+      margin-top:4px;
+      font-size:12px;
+      line-height:1.45;
+      color:var(--muted);
+    }
+    .legend{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top: 12px;
+    }
+    .chip.on{
+      box-shadow: 0 0 0 3px rgba(57,158,146,.16);
+    }
+    .chip.dim{
+      color:#9aa3ad;
+      border-color: rgba(0,0,0,.08);
+      background: rgba(243,245,248,.75);
+    }
+    .diagram-top{
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      display:flex;
+      align-items: stretch;
+      background:#fff;
+      border-bottom: 1px solid rgba(0,0,0,.08);
+      overflow: hidden;
+    }
+    .diagram-wrap{
+      overflow:auto;
+      background:#fff;
+      cursor: grab;
+      touch-action: pan-x pan-y;
+      user-select: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .diagram-wrap.dragging{ cursor: grabbing; }
+    .diagram-canvas{
+      display:flex;
+      align-items:flex-start;
+      width: max-content;
+      min-width:100%;
+    }
+    .station-sidebar-corner{
+      position: sticky;
+      left: 0;
+      z-index: 7;
+      flex: 0 0 118px;
+      width: 118px;
+      background: linear-gradient(180deg, rgba(20,68,121,.04), rgba(20,68,121,0));
+      border-right: 1px solid rgba(0,0,0,.08);
+    }
+    .diagram-axis-wrap{
+      flex: 1 1 auto;
+      background:#fff;
+      overflow:hidden;
+    }
+    .diagram-body{
+      display:flex;
+      align-items:flex-start;
+    }
+    .station-sidebar{
+      position: sticky;
+      left: 0;
+      z-index: 4;
+      flex: 0 0 118px;
+      width: 118px;
+      background: #f7fafc;
+      border-right: 1px solid rgba(0,0,0,.08);
+      box-shadow: 8px 0 16px rgba(20,68,121,.06);
+    }
+    .station-sidebar-head{
+      height: 48px;
+      border-bottom: 1px solid rgba(0,0,0,.08);
+      background: linear-gradient(180deg, rgba(20,68,121,.04), rgba(20,68,121,0));
+    }
+    .station-sidebar-row{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      height: 34px;
+      padding: 0 10px 0 8px;
+      border-bottom:1px solid rgba(0,0,0,.06);
+      font-size:12px;
+      font-weight:900;
+      color:var(--text);
+      text-align:right;
+      white-space: nowrap;
+    }
+    .diagram-main{
+      flex: 0 0 auto;
+      background:#fff;
+    }
+    svg{
+      display:block;
+      background:#fff;
+    }
+    #diagramAxis{
+      transform: translateX(0);
+      will-change: transform;
+    }
+    .axis-text{
+      font-size: 11px;
+      font-weight: 800;
+      fill: var(--muted);
+    }
+    .station-text{
+      font-size: 12px;
+      font-weight: 900;
+      fill: var(--text);
+    }
+    .hour-line{
+      stroke: rgba(20,68,121,.14);
+      stroke-width: 1;
+    }
+    .half-line{
+      stroke: rgba(20,68,121,.06);
+      stroke-width: 1;
+      stroke-dasharray: 3 4;
+    }
+    .station-line{
+      stroke: rgba(0,0,0,.08);
+      stroke-width: 1;
+    }
+    .train-line{
+      fill:none;
+      stroke-width: 2.2;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      opacity: .94;
+    }
+    .train-line.dim{ opacity:.16; }
+    .train-line.hover-dim{ opacity:.08; }
+    .train-hit{
+      fill:none;
+      stroke: transparent;
+      stroke-width: 18;
+      cursor: pointer;
+    }
+    .train-hit.dim{ pointer-events:none; }
+    .train-hit.hover-dim{ cursor: default; }
+    .empty{
+      padding: 28px 16px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .tooltip{
+      position: fixed;
+      z-index: 50;
+      pointer-events:none;
+      background: rgba(23,33,43,.92);
+      color:#fff;
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.45;
+      box-shadow: 0 16px 32px rgba(0,0,0,.22);
+      transform: translate(12px, 12px);
+      max-width: min(280px, calc(100vw - 24px));
+      display:none;
+      white-space: nowrap;
+    }
+    .tooltip.show{ display:block; }
+    .modal-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display:none;
+      z-index:80;
+    }
+    .modal-backdrop.show{ display:block; }
+    .modal{
+      position: fixed;
+      inset: 0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:90;
+      padding: 16px;
+    }
+    .modal.show{ display:flex; }
+    .modal-card{
+      width: min(620px, 100%);
+      max-height: min(86vh, 900px);
+      overflow:auto;
+      background:#fff;
+      border-radius: 18px;
+      box-shadow: 0 28px 64px rgba(0,0,0,.22);
+      border:1px solid rgba(0,0,0,.08);
+    }
+    .modal-head{
+      padding: 14px 16px;
+      border-bottom:1px solid var(--divider);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      position: sticky;
+      top:0;
+      background:#fff;
+      z-index:2;
+    }
+    .modal-title .main{
+      font-size:16px;
+      font-weight:900;
+      line-height:1.25;
+    }
+    .modal-title .sub{
+      margin-top:4px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+    .modal-close{
+      appearance:none;
+      border:1px solid rgba(0,0,0,.10);
+      background:#f3f5f8;
+      width:36px;
+      height:36px;
+      border-radius:12px;
+      font-size:20px;
+      font-weight:900;
+      cursor:pointer;
+      flex: 0 0 auto;
+    }
+    .modal-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex: 0 0 auto;
+    }
+    .modal-print{
+      appearance:none;
+      border:1px solid rgba(20,68,121,.18);
+      background:rgba(20,68,121,.08);
+      color:var(--header);
+      height:36px;
+      padding:0 12px;
+      font-size:13px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .modal-body{
+      padding: 12px 14px 16px;
+    }
+    .tt-table{
+      width:100%;
+      border-collapse: separate;
+      border-spacing:0;
+      border:1px solid rgba(0,0,0,.10);
+      border-radius: 14px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .tt-table th,
+    .tt-table td{
+      border-bottom:1px solid rgba(0,0,0,.06);
+      padding:10px 10px;
+      font-size:13px;
+      vertical-align: top;
+    }
+    .tt-table tr:last-child th,
+    .tt-table tr:last-child td{ border-bottom:0; }
+    .tt-table th{
+      text-align:left;
+      background:#f8fafc;
+      font-weight:900;
+      color:var(--muted);
+      white-space: nowrap;
+    }
+    .tt-station{
+      font-weight:900;
+      color:var(--text);
+    }
+    .tt-pass{
+      color:var(--muted);
+      font-weight:800;
+      font-size:12px;
+    }
+    @media (max-width: 720px){
+      #btnEnterFullscreen,
+      #btnExitFullscreen{
+        display:none !important;
+      }
+      main{ padding: 14px 10px 24px; }
+      .controls{ gap:8px; }
+      .control-row{
+        gap:8px;
+        align-items:stretch;
+      }
+      .seg{
+        width:100%;
+        display:grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .seg.dir-tabs{
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .day-tabs{
+        order:1;
+      }
+      .dir-tabs{
+        order:2;
+      }
+      .page-row{
+        display:grid;
+        grid-template-columns: 8.5fr 8.5fr 1fr;
+      }
+      .page-link{
+        order:1;
+        min-width:0;
+      }
+      .page-link.help-link{
+        min-width:0;
+        padding-left:0;
+        padding-right:0;
+      }
+      .toolselect{
+        order:3;
+        width:auto;
+        flex: 6 1 0;
+      }
+      #btnReload{
+        order:4;
+        flex: 3 1 0;
+      }
+      #btnPrintDiagram{
+        order:5;
+        flex: 1 1 0;
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+      .seg button, .page-link, .toolbtn, .chip, .toolselect{
+        font-size: 13px;
+        padding: 10px 12px;
+        text-align:center;
+      }
+      .zoom-group{
+        width:100%;
+        justify-content:space-between;
+      }
+      .zoom-group .toolbtn{
+        flex:1 1 0;
+      }
+      .legend .chip{
+        flex: 1 1 calc(50% - 8px);
+      }
+      .station-text{ font-size: 11px; }
+      .axis-text{ font-size: 10px; }
+      .station-sidebar{
+        flex-basis: 98px;
+        width: 98px;
+      }
+      .station-sidebar-corner{
+        flex-basis: 98px;
+        width: 98px;
+      }
+      .station-sidebar-row{
+        font-size: 11px;
+        padding-right: 8px;
+      }
+      .modal-card{ width: 100%; max-height: 88vh; }
+      .tt-table th, .tt-table td{ font-size:12px; padding:9px 8px; }
+    }
+
+    button,
+    .meta-pill,
+    .page-link,
+    .toolselect,
+    [role="button"]{
+      border-radius: 0 !important;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1 id="pageTitle">架空鉄道ダイヤグラム</h1>
+      <p id="pageLead">本線の列車ダイヤを、運行日別 CSV を切り替えながら確認できます。スジを押すと、その列車の時刻表を表示します。</p>
+      <div class="meta-row" id="diagramMetaRow">
+        <span class="meta-pill" id="metaDay">運行日: --</span>
+        <span class="meta-pill" id="metaFiles">CSV: --</span>
+        <span class="meta-pill" id="metaCount">列車数: --</span>
+      </div>
+    </section>
+
+    <div class="controls">
+      <div class="control-row page-row">
+        <a class="page-link" href="index.html" id="linkPosition">列車走行位置</a>
+        <a class="page-link" href="n_rosen.html" id="linkRoute">路線時刻表</a>
+        <a class="page-link help-link" href="help.html" aria-label="ヘルプ">?</a>
+        <button type="button" class="page-link fs-btn enter" id="btnEnterFullscreen" aria-label="全画面表示"><span class="win" aria-hidden="true"></span></button>
+        <button type="button" class="page-link fs-btn exit" id="btnExitFullscreen" aria-label="全画面表示を解除" hidden><span class="win" aria-hidden="true"></span></button>
+      </div>
+      <div class="control-row day-dir-row">
+        <div class="seg day-tabs" role="tablist" aria-label="曜日種別">
+          <button type="button" id="btnMonThu" aria-selected="true">平日</button>
+          <button type="button" id="btnFriday" aria-selected="false">金曜</button>
+          <button type="button" id="btnHoliday" aria-selected="false">土休日</button>
+        </div>
+        <div class="seg dir-tabs" role="tablist" aria-label="方向">
+          <button type="button" id="btnUp" aria-selected="true">上り</button>
+          <button type="button" id="btnDown" aria-selected="false">下り</button>
+          <button type="button" id="btnBoth" aria-selected="false">上下両方</button>
+        </div>
+        <select class="toolselect" id="hourRange" aria-label="表示時間帯">
+          <option value="full">4:00-28:00</option>
+          <option value="day">10:00-16:00</option>
+          <option value="evening">16:00-22:00</option>
+          <option value="late">22:00-28:00</option>
+        </select>
+        <button type="button" class="toolbtn ghost" id="btnReload">再読み込み</button>
+        <button type="button" class="toolbtn ghost" id="btnPrintDiagram">印刷</button>
+      </div>
+      <div class="control-row">
+        <div class="zoom-group" aria-label="横方向ズーム">
+          <span class="zoom-label">横方向に拡大/縮小</span>
+          <button type="button" class="toolbtn ghost" id="btnZoomOut">縮小</button>
+          <button type="button" class="toolbtn ghost" id="btnZoomReset">標準</button>
+          <button type="button" class="toolbtn ghost" id="btnZoomIn">拡大</button>
+        </div>
+        <div class="zoom-group" aria-label="縦方向ズーム">
+          <span class="zoom-label">縦方向に拡大/縮小</span>
+          <button type="button" class="toolbtn ghost" id="btnZoomYOut">縮小</button>
+          <button type="button" class="toolbtn ghost" id="btnZoomYReset">標準</button>
+          <button type="button" class="toolbtn ghost" id="btnZoomYIn">拡大</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div class="title" id="panelTitle">上りダイヤグラム</div>
+        <div class="sub" id="panelSub">スジを押すと列車時刻表が表示されます。種別チップは複数選択できます。</div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="diagram-top" id="diagramTop">
+        <div class="station-sidebar-corner"></div>
+        <div class="diagram-axis-wrap">
+          <svg id="diagramAxis"></svg>
+        </div>
+      </div>
+      <div class="diagram-wrap" id="diagramWrap">
+        <div class="empty" id="emptyState">ダイヤグラムを読み込み中です。</div>
+        <div class="diagram-canvas" id="diagramCanvas" hidden>
+          <div class="station-sidebar" id="stationSidebar"></div>
+          <div class="diagram-main">
+            <svg id="diagramSvg"></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal" id="trainModal">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="列車時刻表">
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-actions">
+          <button type="button" class="modal-print" id="modalPrint">印刷</button>
+          <button type="button" class="modal-close" id="modalClose">×</button>
+        </div>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const SITE_CONFIG_CSV = "view_select.csv";
+    const DEFAULT_SITE_CONFIG = {
+      config_mode: "basic",
+      line_name: "架鉄本線",
+      line_short_name: "本線",
+      operator_name: "架空の鉄道",
+      train_position_page_name: "列車走行位置",
+      diagram_page_name: "ダイヤグラム",
+      route_timetable_page_name: "路線時刻表",
+      diagram_meta_visible: "false",
+      csv_mon_thu_up: "honsen_nobori.csv",
+      csv_mon_thu_down: "honsen_kudari.csv",
+      csv_friday_up: "honsen_fri_nobori.csv",
+      csv_friday_down: "honsen_fri_kudari.csv",
+      csv_sat_holiday_up: "honsen_holi_nobori.csv",
+      csv_sat_holiday_down: "honsen_holi_kudari.csv",
+      station_start_name: "海土路",
+      diagram_time_range_full_label: "4:00-4:00",
+      diagram_time_range_full_start_hour: "4",
+      diagram_time_range_full_end_hour: "28",
+      diagram_time_range_day_label: "10:00-16:00",
+      diagram_time_range_day_start_hour: "10",
+      diagram_time_range_day_end_hour: "16",
+      diagram_time_range_evening_label: "16:00-22:00",
+      diagram_time_range_evening_start_hour: "16",
+      diagram_time_range_evening_end_hour: "22",
+      diagram_time_range_late_label: "22:00-28:00",
+      diagram_time_range_late_start_hour: "22",
+      diagram_time_range_late_end_hour: "28",
+      line_color: "#303030",
+    };
+    let siteConfig = {...DEFAULT_SITE_CONFIG};
+    const SIMPLE_CONFIG_KEYS = new Set([
+      "config_mode",
+    ]);
+
+    const CSV_BY_DAY = {
+      mon_thu:     { up: "honsen_nobori.csv", down: "honsen_kudari.csv" },
+      friday:      { up: "honsen_fri_nobori.csv", down: "honsen_fri_kudari.csv" },
+      sat_holiday: { up: "honsen_holi_nobori.csv", down: "honsen_holi_kudari.csv" },
+    };
+
+    const DEFAULT_TYPE_COLOR = {
+      "特急": "#164190",
+      "空特": "#47BCB9",
+      "空快": "#3695D4",
+      "空Ｐ": "#CA175E",
+      "快速": "#E99313",
+      "各停": "#393636",
+      "各停◆": "#393636",
+      "金曜": "#6B3174",
+      "鯉電": "#E10A15",
+    };
+    const TYPE_COLOR = {...DEFAULT_TYPE_COLOR};
+
+    const COL_STNO = 0;
+    const COL_LABEL = 1;
+    const COL_KIND = 2;
+    const FIRST_TRAIN_COL = 3;
+    const ROW_REMARK = 1;
+    const ROW_CARS = 3;
+    const ROW_TRAINNO = 4;
+    const ROW_TYPE = 6;
+    const ROW_NAME = 7;
+    const ROW_GOSU = 8;
+    const ROW_GO = 9;
+    const ROW_ORIGIN = 10;
+    const ROW_DEST = 14;
+
+    const state = {
+      dayKey: "mon_thu",
+      dir: "up",
+      hourRange: "full",
+      zoom: 1,
+      zoomY: 1,
+      typeFilter: new Set(),
+      dataByDay: new Map(),
+      refStations: null,
+      renderedTrains: [],
+      hoverTimer: null,
+      hoverTrainIndex: null,
+    };
+
+    const btnMonThu = document.getElementById("btnMonThu");
+    const btnFriday = document.getElementById("btnFriday");
+    const btnHoliday = document.getElementById("btnHoliday");
+    const btnUp = document.getElementById("btnUp");
+    const btnDown = document.getElementById("btnDown");
+    const btnBoth = document.getElementById("btnBoth");
+    const hourRange = document.getElementById("hourRange");
+    const btnReload = document.getElementById("btnReload");
+    const btnPrintDiagram = document.getElementById("btnPrintDiagram");
+    const btnEnterFullscreen = document.getElementById("btnEnterFullscreen");
+    const btnExitFullscreen = document.getElementById("btnExitFullscreen");
+    const btnZoomOut = document.getElementById("btnZoomOut");
+    const btnZoomReset = document.getElementById("btnZoomReset");
+    const btnZoomIn = document.getElementById("btnZoomIn");
+    const btnZoomYOut = document.getElementById("btnZoomYOut");
+    const btnZoomYReset = document.getElementById("btnZoomYReset");
+    const btnZoomYIn = document.getElementById("btnZoomYIn");
+    const panelTitle = document.getElementById("panelTitle");
+    const panelSub = document.getElementById("panelSub");
+    const metaDay = document.getElementById("metaDay");
+    const diagramMetaRow = document.getElementById("diagramMetaRow");
+    const metaFiles = document.getElementById("metaFiles");
+    const metaCount = document.getElementById("metaCount");
+    const legend = document.getElementById("legend");
+    const diagramTop = document.getElementById("diagramTop");
+    const diagramWrap = document.getElementById("diagramWrap");
+    const diagramCanvas = document.getElementById("diagramCanvas");
+    const diagramAxis = document.getElementById("diagramAxis");
+    const stationSidebar = document.getElementById("stationSidebar");
+    const diagramSvg = document.getElementById("diagramSvg");
+    const emptyState = document.getElementById("emptyState");
+    const tooltip = document.getElementById("tooltip");
+
+    function isSimpleConfigMode(){
+      const mode = String(siteConfig.config_mode ?? DEFAULT_SITE_CONFIG.config_mode ?? "").trim().toLowerCase();
+      return mode === "simple" || mode === "簡易" || mode === "簡易モード";
+    }
+    function configText(key){
+      if(isSimpleConfigMode() && !SIMPLE_CONFIG_KEYS.has(key)){
+        return String(DEFAULT_SITE_CONFIG[key] ?? "");
+      }
+      return String(siteConfig[key] ?? DEFAULT_SITE_CONFIG[key] ?? "");
+    }
+    function configBool(key){
+      const v = configText(key).trim().toLowerCase();
+      return !(v === "false" || v === "0" || v === "no" || v === "非表示" || v === "hide");
+    }
+    function configColor(key, fallback){
+      const v = configText(key).trim();
+      return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+    }
+    function configNumber(key, fallback){
+      const n = Number(configText(key));
+      return Number.isFinite(n) ? n : fallback;
+    }
+    function getDiagramTimeRangeConfig(key){
+      const fallback = {
+        full: { label: "4:00-10:00", startHour: 4, endHour: 10 },
+        day: { label: "10:00-16:00", startHour: 10, endHour: 16 },
+        evening: { label: "16:00-22:00", startHour: 16, endHour: 22 },
+        late: { label: "22:00-28:00", startHour: 22, endHour: 28 },
+      }[key] || { label: key, startHour: 4, endHour: 28 };
+      const startHour = configNumber(`diagram_time_range_${key}_start_hour`, fallback.startHour);
+      const endHour = configNumber(`diagram_time_range_${key}_end_hour`, fallback.endHour);
+      return {
+        label: configText(`diagram_time_range_${key}_label`).trim() || fallback.label,
+        startHour,
+        endHour: Math.max(startHour, endHour),
+      };
+    }
+    function applyDiagramTimeRangeConfig(){
+      hourRange.querySelectorAll("option").forEach(option => {
+        option.textContent = getDiagramTimeRangeConfig(option.value).label;
+      });
+    }
+
+    function applyCsvFileConfig(){
+      CSV_BY_DAY.mon_thu.up = configText("csv_mon_thu_up").trim() || CSV_BY_DAY.mon_thu.up;
+      CSV_BY_DAY.mon_thu.down = configText("csv_mon_thu_down").trim() || CSV_BY_DAY.mon_thu.down;
+      CSV_BY_DAY.friday.up = configText("csv_friday_up").trim() || CSV_BY_DAY.friday.up;
+      CSV_BY_DAY.friday.down = configText("csv_friday_down").trim() || CSV_BY_DAY.friday.down;
+      CSV_BY_DAY.sat_holiday.up = configText("csv_sat_holiday_up").trim() || CSV_BY_DAY.sat_holiday.up;
+      CSV_BY_DAY.sat_holiday.down = configText("csv_sat_holiday_down").trim() || CSV_BY_DAY.sat_holiday.down;
+    }
+
+    function applyTypeColorConfig(){
+      Object.keys(TYPE_COLOR).forEach(key => delete TYPE_COLOR[key]);
+      Object.assign(TYPE_COLOR, DEFAULT_TYPE_COLOR);
+      for(const [key, value] of Object.entries(siteConfig)){
+        if(isSimpleConfigMode() && !SIMPLE_CONFIG_KEYS.has(key)) continue;
+        const v = String(value ?? "").trim();
+        if(key.startsWith("type_color_") && /^#[0-9a-fA-F]{6}$/.test(v)){
+          TYPE_COLOR[key.slice("type_color_".length)] = v;
+        }
+      }
+    }
+
+    function applyDataConfig(){
+      applyCsvFileConfig();
+      applyTypeColorConfig();
+      applyDiagramTimeRangeConfig();
+    }
+
+    async function loadSiteConfig(){
+      try{
+        const r = await fetch(`${SITE_CONFIG_CSV}?ts=${Date.now()}`, {cache:"no-store"});
+        if(!r.ok) throw new Error(`設定CSVの読み込み失敗: ${r.status}`);
+        const rows = parseCSV(await r.text());
+        const next = {...DEFAULT_SITE_CONFIG};
+        for(const row of rows){
+          const key = String(row[0] ?? "").replace(/^\uFEFF/, "").trim();
+          if(!key || key === "key" || key.startsWith("#")) continue;
+          next[key] = String(row[1] ?? "").trim();
+        }
+        siteConfig = next;
+      }
+      catch(e){
+        console.warn(e);
+        siteConfig = {...DEFAULT_SITE_CONFIG};
+      }
+      applySiteConfig();
+    }
+
+    function applySiteConfig(){
+      applyDataConfig();
+      const lineName = configText("line_name");
+      const lineShortName = configText("line_short_name") || lineName;
+      const diagramName = configText("diagram_page_name");
+      document.title = `${lineName} ${diagramName}`;
+      document.getElementById("pageTitle").textContent = `${lineName} ${diagramName}`;
+      document.getElementById("pageLead").textContent = `${lineShortName}の列車ダイヤを、運行日別 CSV を切り替えながら確認できます。スジを押すと、その列車の時刻表を表示します。`;
+      document.getElementById("linkPosition").textContent = configText("train_position_page_name");
+      document.getElementById("linkRoute").textContent = configText("route_timetable_page_name");
+      diagramMetaRow.hidden = !configBool("diagram_meta_visible");
+      renderDiagram();
+    }
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const trainModal = document.getElementById("trainModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+    const modalPrint = document.getElementById("modalPrint");
+    const modalClose = document.getElementById("modalClose");
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+    function openPrintView(titleText, contentHtml){
+      const html = `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(titleText)}</title>
+  <style>
+    body{ margin:0; color:#111; background:#fff; font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; line-height:1.45; }
+    .toolbar{ position:sticky; top:0; display:flex; gap:8px; justify-content:flex-end; padding:10px; background:#f1f3f6; border-bottom:1px solid #ccc; z-index:10; }
+    .toolbar button{ border:1px solid #888; background:#fff; padding:8px 12px; font-weight:900; cursor:pointer; }
+    .print-brand{ margin:0 0 6px; color:#444; font-size:13px; font-weight:900; }
+    main{ padding:18px; }
+    h1{ margin:0 0 12px; font-size:22px; line-height:1.25; }
+    .modal-title .main{ font-size:18px; font-weight:900; }
+    .modal-title .sub{ margin-top:4px; color:#444; font-size:12px; font-weight:700; }
+    table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
+    tr{ page-break-inside:avoid; }
+    th,td{ border:1px solid #777; padding:6px 8px; font-size:12px; vertical-align:top; }
+    th{ background:#f2f2f2; font-weight:900; }
+    .tt-station{ font-weight:900; }
+    .tt-pass{ color:#555; font-weight:800; }
+    .modal-close,.modal-print{ display:none !important; }
+    @media print{ .toolbar{ display:none; } main{ padding:0; } @page{ margin:12mm; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">印刷</button><button onclick="window.close()">閉じる</button></div>
+  <main><div class="print-brand">${escapeHtml(configText("operator_name"))}　${escapeHtml(configText("line_name"))}</div><h1>${escapeHtml(titleText)}</h1>${contentHtml}</main>
+</body>
+</html>`;
+      const url = URL.createObjectURL(new Blob([html], {type:"text/html"}));
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      return;
+      const win = window.open("", "_blank");
+      if(!win){
+        alert("印刷用タブを開けませんでした。ポップアップ設定を確認してください。");
+        return;
+      }
+      win.document.open();
+      win.document.write(`<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(titleText)}</title>
+  <style>
+    body{ margin:0; color:#111; background:#fff; font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; line-height:1.45; }
+    .toolbar{ position:sticky; top:0; display:flex; gap:8px; justify-content:flex-end; padding:10px; background:#f1f3f6; border-bottom:1px solid #ccc; z-index:10; }
+    .toolbar button{ border:1px solid #888; background:#fff; padding:8px 12px; font-weight:900; cursor:pointer; }
+    .print-brand{ margin:0 0 6px; color:#444; font-size:13px; font-weight:900; }
+    main{ padding:18px; }
+    h1{ margin:0 0 12px; font-size:22px; line-height:1.25; }
+    .modal-title .main{ font-size:18px; font-weight:900; }
+    .modal-title .sub{ margin-top:4px; color:#444; font-size:12px; font-weight:700; }
+    table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
+    tr{ page-break-inside:avoid; }
+    th,td{ border:1px solid #777; padding:6px 8px; font-size:12px; vertical-align:top; }
+    th{ background:#f2f2f2; font-weight:900; }
+    .tt-station{ font-weight:900; }
+    .tt-pass{ color:#555; font-weight:800; }
+    .modal-close,.modal-print{ display:none !important; }
+    @media print{
+      .toolbar{ display:none; }
+      main{ padding:0; }
+      @page{ margin:12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">印刷</button><button onclick="window.close()">閉じる</button></div>
+  <main><div class="print-brand">${escapeHtml(configText("operator_name"))}　${escapeHtml(configText("line_name"))}</div><h1>${escapeHtml(titleText)}</h1>${contentHtml}</main>
+</body>
+</html>`);
+      win.document.close();
+    }
+    function openDiagramPrintView(){
+      if(diagramCanvas.hidden || !diagramSvg.innerHTML.trim()){
+        alert("印刷できるダイヤグラムがまだ表示されていません。");
+        return;
+      }
+      const titleText = panelTitle.textContent.trim() || configText("diagram_page_name");
+      const currentRange = getDiagramTimeRangeConfig(state.hourRange);
+      const typeSummary = state.typeFilter.size
+        ? [...state.typeFilter].join("・")
+        : "すべて表示";
+      const summaryText = [
+        `運行日: ${getDayLabel(state.dayKey)}`,
+        `方向: ${state.dir === "both" ? "上下両方" : (state.dir === "up" ? "上り" : "下り")}`,
+        `時間帯: ${currentRange.label}`,
+        `種別: ${typeSummary}`,
+      ].join(" / ");
+      const metaText = configBool("diagram_meta_visible")
+        ? [metaDay.textContent, metaFiles.textContent, metaCount.textContent].filter(Boolean).join("　")
+        : "";
+      const axis = diagramAxis.outerHTML;
+      const svg = diagramSvg.outerHTML;
+      const stations = stationSidebar.innerHTML;
+      const svgWidth = Number(diagramSvg.getAttribute("width")) || 1000;
+      const svgHeight = Number(diagramSvg.getAttribute("height")) || 800;
+      const axisHeight = Number(diagramAxis.getAttribute("height")) || 40;
+      const html = `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(titleText)}</title>
+  <style>
+    body{ margin:0; color:#111; background:#fff; font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; }
+    .toolbar{ position:sticky; top:0; display:flex; gap:8px; justify-content:flex-end; padding:10px; background:#f1f3f6; border-bottom:1px solid #ccc; z-index:10; }
+    .toolbar button{ border:1px solid #888; background:#fff; padding:8px 12px; font-weight:900; cursor:pointer; }
+    .print-brand{ margin:0 0 6px; color:#444; font-size:13px; font-weight:900; }
+    main{ padding:14px; }
+    h1{ margin:0; font-size:22px; line-height:1.25; }
+    .meta{ margin:4px 0 12px; color:#444; font-size:12px; font-weight:800; }
+    .summary{ margin:0 0 8px; color:#222; font-size:12px; font-weight:900; line-height:1.5; }
+    .diagram-print{ display:grid; grid-template-columns:110px ${svgWidth}px; width:${svgWidth + 110}px; }
+    .corner{ height:${axisHeight}px; border-right:1px solid #999; border-bottom:1px solid #999; background:#f2f2f2; }
+    .axis{ height:${axisHeight}px; overflow:hidden; border-bottom:1px solid #999; }
+    .stations{ border-right:1px solid #999; }
+    .station-sidebar-row{ display:flex; align-items:center; justify-content:flex-end; padding-right:8px; border-bottom:1px solid #ddd; font-size:11px; font-weight:800; color:#222; }
+    .svg-wrap{ width:${svgWidth}px; min-height:${svgHeight}px; overflow:visible; }
+    svg{ display:block; }
+    .hour-line{ stroke:#99a3ad; stroke-width:1; }
+    .half-line{ stroke:#d5dbe3; stroke-width:1; stroke-dasharray:4 4; }
+    .station-line{ stroke:#ccd3dc; stroke-width:1; }
+    .axis-text,.station-text{ fill:#333; font-size:11px; font-weight:800; }
+    .train-line{ fill:none; stroke-width:2.4; }
+    .train-line.dim{ opacity:.16; }
+    .train-line.hover-dim{ opacity:.08; }
+    .train-hit{ display:none; }
+    @media print{
+      .toolbar{ display:none; }
+      main{ padding:0; }
+      @page{ size: landscape; margin:8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">印刷</button><button onclick="window.close()">閉じる</button></div>
+  <main>
+    <div class="print-brand">${escapeHtml(configText("operator_name"))}　${escapeHtml(configText("line_name"))}</div>
+    <h1>${escapeHtml(titleText)}</h1>
+    <div class="summary">${escapeHtml(summaryText)}</div>
+    <div class="meta">${escapeHtml(metaText)}</div>
+    <div class="diagram-print">
+      <div class="corner"></div>
+      <div class="axis">${axis}</div>
+      <div class="stations">${stations}</div>
+      <div class="svg-wrap">${svg}</div>
+    </div>
+  </main>
+</body>
+</html>`;
+      const url = URL.createObjectURL(new Blob([html], {type:"text/html"}));
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    function formatDateKey(date){
+      return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+    }
+    function getOperationalDate(date){
+      const d = new Date(date.getTime());
+      if(d.getHours() < 4) d.setDate(d.getDate() - 1);
+      return d;
+    }
+    function addDays(date, days){
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+    function sameDate(a, b){
+      return a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+    }
+    function nthMonday(year, monthIndex, nth){
+      const d = new Date(year, monthIndex, 1);
+      const offset = (8 - d.getDay()) % 7;
+      return 1 + offset + (nth - 1) * 7;
+    }
+    function vernalEquinoxDay(year){
+      return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+    function autumnEquinoxDay(year){
+      return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+    function baseJapaneseHolidayName(date){
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      if(month === 1 && day === 1) return "元日";
+      if(month === 1 && day === nthMonday(year, 0, 2)) return "成人の日";
+      if(month === 2 && day === 11) return "建国記念の日";
+      if(month === 2 && day === 23) return "天皇誕生日";
+      if(month === 3 && day === vernalEquinoxDay(year)) return "春分の日";
+      if(month === 4 && day === 29) return "昭和の日";
+      if(month === 5 && day === 3) return "憲法記念日";
+      if(month === 5 && day === 4) return "みどりの日";
+      if(month === 5 && day === 5) return "こどもの日";
+      if(month === 7 && day === nthMonday(year, 6, 3)) return "海の日";
+      if(month === 8 && day === 11) return "山の日";
+      if(month === 9 && day === nthMonday(year, 8, 3)) return "敬老の日";
+      if(month === 9 && day === autumnEquinoxDay(year)) return "秋分の日";
+      if(month === 10 && day === nthMonday(year, 9, 2)) return "スポーツの日";
+      if(month === 11 && day === 3) return "文化の日";
+      if(month === 11 && day === 23) return "勤労感謝の日";
+      return "";
+    }
+    function isJapaneseHolidayCore(date){
+      if(baseJapaneseHolidayName(date)) return true;
+      for(let back=1; back<=7; back++){
+        const prev = addDays(date, -back);
+        if(!baseJapaneseHolidayName(prev)) continue;
+        if(prev.getDay() !== 0) continue;
+        let substitute = addDays(prev, 1);
+        while(baseJapaneseHolidayName(substitute)){
+          substitute = addDays(substitute, 1);
+        }
+        return sameDate(substitute, date);
+      }
+      return false;
+    }
+    function isJapaneseHoliday(date){
+      if(isJapaneseHolidayCore(date)) return true;
+      const dow = date.getDay();
+      if(dow === 0 || dow === 6) return false;
+      return isJapaneseHolidayCore(addDays(date, -1)) && isJapaneseHolidayCore(addDays(date, 1));
+    }
+    function getDayKey(date){
+      const opDate = getOperationalDate(date);
+      const dow = opDate.getDay();
+      if(dow === 0 || dow === 6) return "sat_holiday";
+      if(isJapaneseHoliday(opDate)) return "sat_holiday";
+      if(dow === 5) return "friday";
+      return "mon_thu";
+    }
+    function getDayLabel(dayKey){
+      if(dayKey === "friday") return "金曜";
+      if(dayKey === "sat_holiday") return "土休日";
+      return "平日";
+    }
+    function typeColor(type){
+      const t = String(type || "").trim();
+      return TYPE_COLOR[t] || configColor("line_color", "#399E92");
+    }
+    function isBranchStyleStation(station){
+      const code = String(station?.code ?? "").trim();
+      return /^[A-Z]{1,3}\d{1,2}$/.test(code) && !/^N\d{1,2}$/.test(code);
+    }
+    function idealTextColor(hex){
+      const h = String(hex || "").replace("#", "");
+      if(h.length !== 6) return "#fff";
+      const r = parseInt(h.slice(0,2), 16);
+      const g = parseInt(h.slice(2,4), 16);
+      const b = parseInt(h.slice(4,6), 16);
+      const y = (r*299 + g*587 + b*114) / 1000;
+      return y >= 160 ? "#000" : "#fff";
+    }
+    function escapeHtml(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+    function secToHHMM(sec){
+      if(sec == null) return "";
+      const DAY = 86400;
+      const s = ((Math.floor(sec) % DAY) + DAY) % DAY;
+      return `${pad2(Math.floor(s / 3600))}:${pad2(Math.floor((s % 3600) / 60))}`;
+    }
+    function parseCSV(text){
+      const rows = [];
+      let row = [], cur = "", inQuotes = false;
+      for(let i=0;i<text.length;i++){
+        const ch = text[i], next = text[i+1];
+        if(inQuotes){
+          if(ch === '"' && next === '"'){ cur += '"'; i++; }
+          else if(ch === '"'){ inQuotes = false; }
+          else cur += ch;
+          continue;
+        }
+        if(ch === '"') inQuotes = true;
+        else if(ch === ","){ row.push(cur); cur = ""; }
+        else if(ch === "\r"){ }
+        else if(ch === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+        else cur += ch;
+      }
+      if(cur.length || row.length){ row.push(cur); rows.push(row); }
+      return rows;
+    }
+    function parseTimeField(v){
+      if(v == null) return { sec:null, isPass:false, isNoService:false };
+      let s = String(v).trim();
+      if(!s) return { sec:null, isPass:false, isNoService:false };
+      if(s === "||") return { sec:null, isPass:false, isNoService:true };
+      const isPass = s.endsWith("?");
+      s = s.replace(/\?/g, "").replace(/\s+/g, "");
+      if(!/^\d+$/.test(s)) return { sec:null, isPass, isNoService:false };
+      if(s.length > 6) s = s.slice(-6);
+      s = s.padStart(6, "0");
+      const hh = Number(s.slice(0,2));
+      const mm = Number(s.slice(2,4));
+      const ss = Number(s.slice(4,6));
+      if([hh,mm,ss].some(Number.isNaN)) return { sec:null, isPass, isNoService:false };
+      return { sec: hh*3600 + mm*60 + ss, isPass, isNoService:false };
+    }
+    function extractStationsFromUpCsv(csvText){
+      const rows = parseCSV(csvText).map(r => r.map(c => (c ?? "").trim()));
+      const startName = configText("station_start_name").trim() || "海土路";
+      const isStationRow = (r) => {
+        const name = (r[COL_LABEL] ?? "").trim();
+        const kind = (r[COL_KIND] ?? "").trim();
+        return !!name && (kind === "着" || kind === "発" || kind === "番線");
+      };
+      let startRow = rows.findIndex(r => (r[COL_LABEL] ?? "").trim() === startName && isStationRow(r));
+      if(startRow < 0) startRow = rows.findIndex(isStationRow);
+      if(startRow < 0) throw new Error("駅リストを抽出できる行が見つかりません。");
+      const list = [];
+      for(let i=startRow;i<rows.length;i++){
+        const code = (rows[i][COL_STNO] ?? "").trim();
+        const name = (rows[i][COL_LABEL] ?? "").trim();
+        const kind = (rows[i][COL_KIND] ?? "").trim();
+        if(!name) continue;
+        if(!(kind === "着" || kind === "発" || kind === "番線")) continue;
+        list.push({ code, name });
+      }
+      const seen = new Set();
+      return list.filter(st => {
+        if(seen.has(st.name)) return false;
+        seen.add(st.name);
+        return true;
+      }).map((st, idx) => ({ idx, code: st.code || `N${String(idx+1).padStart(2,"0")}`, name: st.name }));
+    }
+    function buildStopsFromRows(rows, col, refStations){
+      const stationRows = new Map();
+      for(const st of refStations){
+        stationRows.set(st.name, { arrRows:[], depRows:[], trackRows:[] });
+      }
+      for(let i=0;i<rows.length;i++){
+        const name = (rows[i][COL_LABEL] ?? "").trim();
+        const kind = (rows[i][COL_KIND] ?? "").trim();
+        const ref = stationRows.get(name);
+        if(!ref) continue;
+        if(kind === "着") ref.arrRows.push(i);
+        if(kind === "発") ref.depRows.push(i);
+        if(kind === "番線") ref.trackRows.push(i);
+      }
+      const stops = [];
+      for(const st of refStations){
+        const refs = stationRows.get(st.name);
+        const entries = [];
+        for(const rowIdx of refs.arrRows){
+          const parsed = parseTimeField(rows[rowIdx]?.[col] ?? "");
+          if(parsed.sec != null) entries.push({ sec: parsed.sec, kind:"arr", isPass: parsed.isPass });
+        }
+        for(const rowIdx of refs.depRows){
+          const parsed = parseTimeField(rows[rowIdx]?.[col] ?? "");
+          if(parsed.sec != null) entries.push({ sec: parsed.sec, kind:"dep", isPass: parsed.isPass });
+        }
+        if(!entries.length) continue;
+        entries.sort((a,b)=>a.sec - b.sec);
+        const track = refs.trackRows.map(rowIdx => String(rows[rowIdx]?.[col] ?? "").trim()).find(v => v && v !== "||") || "";
+        stops.push({
+          stationIdx: st.idx,
+          stationName: st.name,
+          code: st.code,
+          track,
+          entries,
+        });
+      }
+      return stops;
+    }
+    function normalizeTrainStops(stops, dir){
+      const DAY = 86400;
+      const orderedStops = [...stops].sort((a,b)=>{
+        return dir === "up"
+          ? a.stationIdx - b.stationIdx
+          : b.stationIdx - a.stationIdx;
+      });
+      let dayOffset = 0;
+      let lastAbs = null;
+      const out = [];
+      for(const stop of orderedStops){
+        const normalizedEntries = [];
+        for(const entry of stop.entries){
+          let abs = entry.sec + dayOffset * DAY;
+          while(lastAbs != null && abs + 2 < lastAbs){
+            dayOffset++;
+            abs = entry.sec + dayOffset * DAY;
+          }
+          normalizedEntries.push({ ...entry, abs });
+          lastAbs = abs;
+        }
+        out.push({
+          ...stop,
+          entries: normalizedEntries,
+          arrAbs: normalizedEntries.find(e => e.kind === "arr")?.abs ?? null,
+          depAbs: normalizedEntries.find(e => e.kind === "dep")?.abs ?? null,
+          passAbs: normalizedEntries.find(e => e.isPass)?.abs ?? null,
+          hasPass: normalizedEntries.some(e => e.isPass),
+        });
+      }
+      const lastStopAbs = out[out.length - 1]?.entries?.[out[out.length - 1].entries.length - 1]?.abs ?? null;
+      if(lastStopAbs != null && lastStopAbs < 10800){
+        for(const stop of out){
+          stop.entries.forEach(entry => { entry.abs += DAY; });
+          if(stop.arrAbs != null) stop.arrAbs += DAY;
+          if(stop.depAbs != null) stop.depAbs += DAY;
+          if(stop.passAbs != null) stop.passAbs += DAY;
+        }
+      }
+      return out;
+    }
+    function parseSchedule(csvText, dir, refStations){
+      const rows = parseCSV(csvText).map(r => r.map(c => (c ?? "").trim()));
+      const maxCols = Math.max(...rows.map(r => r.length));
+      const trainCols = [];
+      for(let c=FIRST_TRAIN_COL;c<maxCols;c++){
+        if((rows[ROW_TRAINNO]?.[c] ?? "").trim()) trainCols.push(c);
+      }
+      const trains = [];
+      for(const c of trainCols){
+        const trainNo = (rows[ROW_TRAINNO]?.[c] ?? "").trim();
+        const stops = normalizeTrainStops(buildStopsFromRows(rows, c, refStations), dir);
+        if(!stops.length) continue;
+        const name = (rows[ROW_NAME]?.[c] ?? "").trim();
+        const type = (rows[ROW_TYPE]?.[c] ?? "").trim();
+        const origin = (rows[ROW_ORIGIN]?.[c] ?? "").trim();
+        const dest = (rows[ROW_DEST]?.[c] ?? "").trim();
+        const cars = (rows[ROW_CARS]?.[c] ?? "").trim();
+        const zPart = (rows[ROW_GOSU]?.[c] ?? "").trim();
+        const yPart = (rows[ROW_GO]?.[c] ?? "").trim();
+        const remark = (rows[ROW_REMARK]?.[c] ?? "").trim();
+        const plotPoints = [];
+        for(const stop of stops){
+          for(const entry of stop.entries){
+            plotPoints.push({
+              abs: entry.abs,
+              stationIdx: stop.stationIdx,
+              stationName: stop.stationName,
+              kind: entry.kind,
+              isPass: entry.isPass,
+            });
+          }
+        }
+        plotPoints.sort((a,b)=>a.abs - b.abs);
+        trains.push({
+          trainNo,
+          type,
+          name,
+          origin,
+          dest,
+          cars,
+          zPart,
+          yPart,
+          remark,
+          dir,
+          stops,
+          plotPoints,
+          firstAbs: plotPoints[0]?.abs ?? null,
+          lastAbs: plotPoints[plotPoints.length - 1]?.abs ?? null,
+        });
+      }
+      return { stations: refStations, trains };
+    }
+    function getRangeBounds(){
+      const range = getDiagramTimeRangeConfig(state.hourRange);
+      return [range.startHour * 3600, range.endHour * 3600];
+    }
+    function setDayButtons(){
+      btnMonThu.setAttribute("aria-selected", String(state.dayKey === "mon_thu"));
+      btnFriday.setAttribute("aria-selected", String(state.dayKey === "friday"));
+      btnHoliday.setAttribute("aria-selected", String(state.dayKey === "sat_holiday"));
+    }
+    function setDirButtons(){
+      btnUp.setAttribute("aria-selected", String(state.dir === "up"));
+      btnDown.setAttribute("aria-selected", String(state.dir === "down"));
+      btnBoth.setAttribute("aria-selected", String(state.dir === "both"));
+    }
+    function currentSchedule(){
+      const pack = state.dataByDay.get(state.dayKey);
+      if(!pack) return null;
+      if(state.dir === "both") return pack;
+      return pack[state.dir];
+    }
+    function isFilteredType(type){
+      return state.typeFilter.size > 0 && !state.typeFilter.has(String(type || "").trim());
+    }
+    function renderLegend(trains){
+      const types = [...new Set(trains.map(t => String(t.type || "").trim()).filter(Boolean))];
+      types.sort((a,b)=>{
+        const aIn = Object.prototype.hasOwnProperty.call(TYPE_COLOR, a);
+        const bIn = Object.prototype.hasOwnProperty.call(TYPE_COLOR, b);
+        if(aIn && !bIn) return -1;
+        if(!aIn && bIn) return 1;
+        return a.localeCompare(b, "ja");
+      });
+      legend.innerHTML = types.map(type => {
+        const color = typeColor(type);
+        const on = state.typeFilter.has(type);
+        const dim = state.typeFilter.size > 0 && !on;
+        const bgColor = dim ? "#edf1f5" : color;
+        const borderColor = dim ? "#c7d0da" : color;
+        const textColor = dim ? "#6b7b8a" : idealTextColor(color);
+        return `<button class="chip ${on ? "on" : ""} ${dim ? "dim" : ""}" data-type="${escapeHtml(type)}"
+          style="background:${escapeHtml(bgColor)}; border-color:${escapeHtml(borderColor)}; color:${escapeHtml(textColor)};">${escapeHtml(type)}</button>`;
+      }).join("");
+      legend.querySelectorAll(".chip").forEach(btn => {
+        btn.addEventListener("click", ()=>{
+          const type = String(btn.dataset.type || "").trim();
+          if(!type) return;
+          if(state.typeFilter.has(type)) state.typeFilter.delete(type);
+          else state.typeFilter.add(type);
+          renderDiagram();
+        });
+      });
+    }
+    function showTooltip(e, train){
+      const trainName = train.name ? ` / ${train.name}` : "";
+      tooltip.innerHTML = `${escapeHtml(train.trainNo)} / ${escapeHtml(train.type || "種別")}${escapeHtml(trainName)}<br>${escapeHtml(train.origin || "—")} → ${escapeHtml(train.dest || "—")}`;
+      tooltip.style.left = `${e.clientX}px`;
+      tooltip.style.top = `${e.clientY}px`;
+      tooltip.classList.add("show");
+    }
+    function moveTooltip(e){
+      tooltip.style.left = `${e.clientX}px`;
+      tooltip.style.top = `${e.clientY}px`;
+    }
+    function hideTooltip(){
+      tooltip.classList.remove("show");
+    }
+    function syncFullscreenButtons(){
+      const active = !!document.fullscreenElement;
+      btnEnterFullscreen.hidden = active;
+      btnExitFullscreen.hidden = !active;
+    }
+    async function enterFullscreenMode(){
+      try{
+        await document.documentElement.requestFullscreen();
+      }catch(e){
+        alert("全画面表示にできませんでした。");
+      }
+    }
+    async function exitFullscreenMode(){
+      try{
+        if(document.fullscreenElement) await document.exitFullscreen();
+      }catch(e){
+        alert("全画面表示を解除できませんでした。");
+      }
+    }
+    function clearHoverFocus(){
+      if(state.hoverTimer){
+        clearTimeout(state.hoverTimer);
+        state.hoverTimer = null;
+      }
+      state.hoverTrainIndex = null;
+      diagramSvg.querySelectorAll(".train-line, .train-hit").forEach(el => el.classList.remove("hover-dim"));
+    }
+    function applyHoverFocus(trainIndex){
+      state.hoverTrainIndex = trainIndex;
+      diagramSvg.querySelectorAll(".train-line, .train-hit").forEach(el => {
+        const idx = Number(el.dataset.trainIndex);
+        el.classList.toggle("hover-dim", Number.isFinite(idx) && idx !== trainIndex);
+      });
+    }
+    function buildModalTitle(train){
+      const extra = `${train.name ? ` / ${train.name}` : ""}${train.zPart && !TYPE_COLOR[train.zPart] ? ` ${train.zPart}${train.yPart}` : ""}${train.cars ? `　${train.cars}両` : ""}`;
+      return `
+        <div class="main">${escapeHtml(train.trainNo)}列車 / ${escapeHtml(train.type || "種別")}${escapeHtml(extra)}</div>
+        <div class="sub">${escapeHtml(train.origin || "—")} → ${escapeHtml(train.dest || "—")} / ${train.dir === "up" ? "上り方面" : "下り方面"}</div>
+      `;
+    }
+    function openTrainModal(train){
+      modalTitle.innerHTML = buildModalTitle(train);
+      const rows = train.stops.map(stop => {
+        const arr = stop.arrAbs != null ? secToHHMM(stop.arrAbs) : "";
+        const dep = stop.depAbs != null ? secToHHMM(stop.depAbs) : "";
+        const pass = stop.passAbs != null
+          ? `${secToHHMM(stop.passAbs)} <span class="tt-pass">(通過)</span>`
+          : "";
+        const depCell = stop.hasPass ? pass : (dep ? escapeHtml(dep) : pass);
+        return `
+          <tr>
+            <td class="tt-station">${escapeHtml(stop.stationName)}</td>
+            <td>${escapeHtml(stop.track || "")}</td>
+            <td>${escapeHtml(arr)}</td>
+            <td>${depCell}</td>
+          </tr>
+        `;
+      }).join("");
+      modalBody.innerHTML = `
+        <table class="tt-table" aria-label="列車時刻表">
+          <thead>
+            <tr><th>駅</th><th>番線</th><th>着</th><th>発</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+      modalBackdrop.classList.add("show");
+      trainModal.classList.add("show");
+    }
+    function closeModal(){
+      modalBackdrop.classList.remove("show");
+      trainModal.classList.remove("show");
+    }
+    modalClose.addEventListener("click", closeModal);
+    modalPrint.addEventListener("click", () => {
+      const content = `<div class="modal-title">${modalTitle.innerHTML}</div>${modalBody.innerHTML}`;
+      openPrintView(modalTitle.textContent.trim() || "列車時刻表", content);
+    });
+    modalBackdrop.addEventListener("click", closeModal);
+    trainModal.addEventListener("click", (e)=>{ if(e.target === trainModal) closeModal(); });
+    window.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closeModal(); });
+
+    function renderDiagram(){
+      const schedule = currentSchedule();
+      if(!schedule){
+        emptyState.hidden = false;
+        emptyState.textContent = `${configText("diagram_page_name")}を読み込み中です。`;
+        diagramTop.hidden = true;
+        diagramCanvas.hidden = true;
+        return;
+      }
+      const [rangeStart, rangeEnd] = getRangeBounds();
+      const isUp = state.dir === "up";
+      const stationOrder = [...(state.refStations || schedule.stations || schedule.up?.stations || [])].reverse();
+      const sourceTrains = state.dir === "both"
+        ? [...(schedule.up?.trains || []), ...(schedule.down?.trains || [])]
+        : schedule.trains;
+      const inRangeTrains = sourceTrains.filter(train =>
+        train.plotPoints.some(point => point.abs >= rangeStart && point.abs <= rangeEnd)
+      );
+      state.renderedTrains = inRangeTrains;
+      renderLegend(inRangeTrains);
+
+      metaDay.textContent = `運行日: ${getDayLabel(state.dayKey)}`;
+      metaFiles.textContent = `CSV: ${CSV_BY_DAY[state.dayKey].up} / ${CSV_BY_DAY[state.dayKey].down}`;
+      metaCount.textContent = `列車数: ${inRangeTrains.length}本`;
+      const diagramName = configText("diagram_page_name");
+      panelTitle.textContent = state.dir === "both" ? `上下${diagramName}` : (isUp ? `上り${diagramName}` : `下り${diagramName}`);
+      panelSub.textContent = `${secToHHMM(rangeStart)} から ${secToHHMM(rangeEnd - 60)} までを表示しています。スジを押すと列車時刻表が表示されます。`;
+
+      if(!inRangeTrains.length){
+        emptyState.hidden = false;
+        emptyState.textContent = "この時間帯に表示できる列車はありません。";
+        diagramTop.hidden = true;
+        diagramCanvas.hidden = true;
+        return;
+      }
+
+      emptyState.hidden = true;
+      diagramTop.hidden = false;
+      diagramCanvas.hidden = false;
+
+      const axisHeight = 48;
+      const leftPad = 18;
+      const rightPad = 24;
+      const bottomPad = 32;
+      const rowHeight = 34 * state.zoomY;
+      const hourWidth = 92 * state.zoom;
+      const chartWidth = Math.max(860, leftPad + rightPad + ((rangeEnd - rangeStart) / 3600) * hourWidth);
+      const chartHeight = bottomPad + Math.max(1, stationOrder.length) * rowHeight;
+
+      diagramSvg.setAttribute("viewBox", `0 0 ${chartWidth} ${chartHeight}`);
+      diagramSvg.setAttribute("width", String(chartWidth));
+      diagramSvg.setAttribute("height", String(chartHeight));
+      diagramAxis.setAttribute("viewBox", `0 0 ${chartWidth} ${axisHeight}`);
+      diagramAxis.setAttribute("width", String(chartWidth));
+      diagramAxis.setAttribute("height", String(axisHeight));
+
+      const xOf = (abs) => leftPad + ((abs - rangeStart) / 3600) * hourWidth;
+      const yMap = new Map();
+      stationOrder.forEach((st, idx) => {
+        yMap.set(st.idx, idx * rowHeight + (rowHeight / 2));
+      });
+      stationSidebar.innerHTML = `
+        ${stationOrder.map(st => `<div class="station-sidebar-row" style="height:${rowHeight}px">${escapeHtml(st.name)}</div>`).join("")}
+      `;
+
+      let svg = "";
+      let axisSvg = "";
+      for(let sec = rangeStart; sec <= rangeEnd; sec += 1800){
+        const x = xOf(sec);
+        const isHour = sec % 3600 === 0;
+        svg += `<line x1="${x}" y1="0" x2="${x}" y2="${chartHeight - bottomPad}" class="${isHour ? "hour-line" : "half-line"}"></line>`;
+        if(isHour){
+          axisSvg += `<line x1="${x}" y1="0" x2="${x}" y2="${axisHeight}" class="hour-line"></line>`;
+          axisSvg += `<text x="${x + 2}" y="28" class="axis-text">${escapeHtml(secToHHMM(sec))}</text>`;
+        }else{
+          axisSvg += `<line x1="${x}" y1="0" x2="${x}" y2="${axisHeight}" class="half-line"></line>`;
+        }
+      }
+      stationOrder.forEach((st, idx) => {
+        const y = idx * rowHeight + (rowHeight / 2);
+        svg += `<line x1="${leftPad}" y1="${y}" x2="${chartWidth - rightPad}" y2="${y}" class="station-line"></line>`;
+      });
+
+      const buildTrainPath = (points) => {
+        const commands = [];
+        for(let i=0;i<points.length - 1;i++){
+          const a = points[i];
+          const b = points[i + 1];
+          const x1 = xOf(a.abs);
+          const y1 = yMap.get(a.stationIdx);
+          const x2 = xOf(b.abs);
+          const y2 = yMap.get(b.stationIdx);
+          if(y1 == null || y2 == null) continue;
+
+          const lowIdx = Math.min(a.stationIdx, b.stationIdx);
+          const highIdx = Math.max(a.stationIdx, b.stationIdx);
+          const betweenStations = stationOrder.filter(st => st.idx > lowIdx && st.idx < highIdx);
+          const skippedBranchStations = betweenStations.filter(isBranchStyleStation);
+          const branchOnlyGap = skippedBranchStations.length > 0 && skippedBranchStations.length === betweenStations.length;
+
+          if(!branchOnlyGap){
+            commands.push(`${commands.length ? "L" : "M"} ${x1} ${y1}`);
+            commands.push(`L ${x2} ${y2}`);
+            continue;
+          }
+
+          const firstBranchY = yMap.get(skippedBranchStations[0].idx);
+          const lastBranchY = yMap.get(skippedBranchStations[skippedBranchStations.length - 1].idx);
+          const gapStartY = Math.min(firstBranchY, lastBranchY) - (rowHeight / 2);
+          const gapEndY = Math.max(firstBranchY, lastBranchY) + (rowHeight / 2);
+          const dy = y2 - y1;
+          const dx = x2 - x1;
+          if(Math.abs(dy) < 0.001){
+            commands.push(`${commands.length ? "L" : "M"} ${x1} ${y1}`);
+            commands.push(`L ${x2} ${y2}`);
+            continue;
+          }
+
+          const enterY = y1 < y2 ? gapStartY : gapEndY;
+          const exitY = y1 < y2 ? gapEndY : gapStartY;
+          const enterRatio = (enterY - y1) / dy;
+          const exitRatio = (exitY - y1) / dy;
+          const enterX = x1 + dx * enterRatio;
+          const exitX = x1 + dx * exitRatio;
+
+          commands.push(`${commands.length ? "L" : "M"} ${x1} ${y1}`);
+          commands.push(`L ${enterX} ${enterY}`);
+          commands.push(`M ${exitX} ${exitY}`);
+          commands.push(`L ${x2} ${y2}`);
+        }
+        return commands.join(" ");
+      };
+
+      inRangeTrains.forEach((train, index) => {
+        const points = train.plotPoints
+          .filter(point => point.abs >= rangeStart && point.abs <= rangeEnd && yMap.has(point.stationIdx))
+          .sort((a,b)=>a.abs - b.abs);
+        if(points.length < 2) return;
+        const d = buildTrainPath(points);
+        if(!d) return;
+        const color = typeColor(train.type);
+        const dim = isFilteredType(train.type);
+        const dash = state.dir === "both" && train.dir === "down" ? ` stroke-dasharray="6 4"` : "";
+        svg += `
+          <path d="${d}" class="train-line ${dim ? "dim" : ""}" stroke="${escapeHtml(color)}" data-train-index="${index}" data-train-type="${escapeHtml(train.type || "")}"${dash}></path>
+          <path d="${d}" class="train-hit ${dim ? "dim" : ""}" data-train-index="${index}" data-train-type="${escapeHtml(train.type || "")}"></path>
+        `;
+      });
+
+      diagramSvg.innerHTML = svg;
+      diagramAxis.innerHTML = axisSvg;
+      diagramAxis.style.transform = `translateX(${-diagramWrap.scrollLeft}px)`;
+      diagramSvg.querySelectorAll(".train-hit").forEach(el => {
+        const index = Number(el.dataset.trainIndex);
+        const train = inRangeTrains[index];
+        if(!train) return;
+        el.addEventListener("pointerenter", (e)=> showTooltip(e, train));
+        el.addEventListener("pointermove", moveTooltip);
+        el.addEventListener("pointerenter", ()=>{
+          if(window.matchMedia && window.matchMedia("(hover:hover) and (pointer:fine)").matches){
+            clearHoverFocus();
+            state.hoverTimer = setTimeout(()=> applyHoverFocus(index), 1500);
+          }
+        });
+        el.addEventListener("pointerleave", ()=>{
+          hideTooltip();
+          clearHoverFocus();
+        });
+        el.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          clearHoverFocus();
+          openTrainModal(train);
+        });
+      });
+    }
+
+    async function loadDayData(dayKey, force = false){
+      if(!force && state.dataByDay.has(dayKey)) return;
+      const conf = CSV_BY_DAY[dayKey];
+      if(!conf?.up || !conf?.down) throw new Error(`CSV_BY_DAY の設定が不正です（dayKey=${dayKey}）`);
+      const bust = `?ts=${Date.now()}`;
+      const [upText, downText] = await Promise.all([
+        fetch(conf.up + bust, { cache:"no-store" }).then(r => {
+          if(!r.ok) throw new Error(`上りCSVの読み込み失敗: ${r.status}`);
+          return r.text();
+        }),
+        fetch(conf.down + bust, { cache:"no-store" }).then(r => {
+          if(!r.ok) throw new Error(`下りCSVの読み込み失敗: ${r.status}`);
+          return r.text();
+        }),
+      ]);
+      if(!state.refStations){
+        state.refStations = extractStationsFromUpCsv(upText);
+      }
+      state.dataByDay.set(dayKey, {
+        up: parseSchedule(upText, "up", state.refStations),
+        down: parseSchedule(downText, "down", state.refStations),
+      });
+    }
+
+    async function loadAll(force = false){
+      emptyState.hidden = false;
+      emptyState.textContent = `${configText("diagram_page_name")}を読み込み中です。`;
+      diagramSvg.hidden = true;
+      hideTooltip();
+      if(force){
+        state.dataByDay.clear();
+        state.refStations = null;
+      }
+      await loadDayData(state.dayKey, force);
+      renderDiagram();
+    }
+
+    function setDayKey(dayKey){
+      state.dayKey = dayKey;
+      setDayButtons();
+      loadDayData(dayKey).then(renderDiagram).catch(showLoadError);
+    }
+    function setDir(dir){
+      state.dir = dir;
+      setDirButtons();
+      renderDiagram();
+    }
+    function showLoadError(err){
+      console.error(err);
+      emptyState.hidden = false;
+      emptyState.textContent = `読み込みに失敗しました: ${err.message || err}`;
+      diagramTop.hidden = true;
+      diagramCanvas.hidden = true;
+    }
+
+    btnMonThu.addEventListener("click", ()=> setDayKey("mon_thu"));
+    btnFriday.addEventListener("click", ()=> setDayKey("friday"));
+    btnHoliday.addEventListener("click", ()=> setDayKey("sat_holiday"));
+    btnUp.addEventListener("click", ()=> setDir("up"));
+    btnDown.addEventListener("click", ()=> setDir("down"));
+    btnBoth.addEventListener("click", ()=> setDir("both"));
+    hourRange.addEventListener("change", ()=>{
+      state.hourRange = hourRange.value;
+      renderDiagram();
+    });
+    btnZoomOut.addEventListener("click", ()=>{
+      state.zoom = Math.max(0.6, Number((state.zoom - 0.2).toFixed(2)));
+      renderDiagram();
+    });
+    btnZoomReset.addEventListener("click", ()=>{
+      state.zoom = 1;
+      renderDiagram();
+    });
+    btnZoomIn.addEventListener("click", ()=>{
+      state.zoom = Math.min(2.4, Number((state.zoom + 0.2).toFixed(2)));
+      renderDiagram();
+    });
+    btnZoomYOut.addEventListener("click", ()=>{
+      state.zoomY = Math.max(0.75, Number((state.zoomY - 0.15).toFixed(2)));
+      renderDiagram();
+    });
+    btnZoomYReset.addEventListener("click", ()=>{
+      state.zoomY = 1;
+      renderDiagram();
+    });
+    btnZoomYIn.addEventListener("click", ()=>{
+      state.zoomY = Math.min(2.4, Number((state.zoomY + 0.15).toFixed(2)));
+      renderDiagram();
+    });
+    btnEnterFullscreen.addEventListener("click", enterFullscreenMode);
+    btnExitFullscreen.addEventListener("click", exitFullscreenMode);
+    document.addEventListener("fullscreenchange", syncFullscreenButtons);
+    btnReload.addEventListener("click", async ()=>{
+      try{
+        await loadSiteConfig();
+        await loadAll(true);
+      }
+      catch(err){
+        showLoadError(err);
+      }
+    });
+    btnPrintDiagram.addEventListener("click", openDiagramPrintView);
+
+    (function enableDragScroll(){
+      let dragging = false;
+      let startX = 0;
+      let startY = 0;
+      let startLeft = 0;
+      let startTop = 0;
+      let moved = false;
+      diagramWrap.addEventListener("pointerdown", (e)=>{
+        if(e.target.closest(".train-hit")) return;
+        dragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = diagramWrap.scrollLeft;
+        startTop = diagramWrap.scrollTop;
+        diagramWrap.classList.add("dragging");
+        diagramWrap.setPointerCapture?.(e.pointerId);
+      });
+      diagramWrap.addEventListener("pointermove", (e)=>{
+        if(!dragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if(Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+        diagramWrap.scrollLeft = startLeft - dx;
+        diagramWrap.scrollTop = startTop - dy;
+      });
+      const stop = ()=>{
+        dragging = false;
+        diagramWrap.classList.remove("dragging");
+      };
+      diagramWrap.addEventListener("pointerup", stop);
+      diagramWrap.addEventListener("pointercancel", stop);
+      diagramWrap.addEventListener("pointerleave", stop);
+      diagramWrap.addEventListener("scroll", ()=>{
+        diagramAxis.style.transform = `translateX(${-diagramWrap.scrollLeft}px)`;
+      }, { passive: true });
+    })();
+
+    (async function init(){
+      const todayKey = getDayKey(new Date());
+      state.dayKey = todayKey;
+      syncFullscreenButtons();
+      setDayButtons();
+      setDirButtons();
+      hourRange.value = state.hourRange;
+      await loadSiteConfig();
+      loadAll().catch(showLoadError);
+    })();
+  </script>
+</body>
+</html>
